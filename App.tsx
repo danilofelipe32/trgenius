@@ -5,6 +5,7 @@ import { callGemini } from './services/geminiService';
 import { processSingleUploadedFile, chunkText } from './services/ragService';
 import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
+import Login from './components/Login';
 
 // --- Reusable Section Component ---
 interface SectionProps {
@@ -110,6 +111,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer,
 
 // --- Main App Component ---
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [activeView, setActiveView] = useState<DocumentType>('etp');
   
   // State for documents
@@ -173,6 +175,15 @@ const App: React.FC = () => {
 
   // --- Effects ---
   useEffect(() => {
+    const loggedIn = sessionStorage.getItem('isAuthenticated') === 'true';
+    if (loggedIn) {
+        setIsAuthenticated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
     const loadInitialData = async () => {
         const etps = storage.getSavedETPs();
         setSavedETPs(etps);
@@ -226,9 +237,21 @@ const App: React.FC = () => {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [isAuthenticated]);
 
   // --- Handlers ---
+  const handleLogin = (success: boolean) => {
+    if (success) {
+        sessionStorage.setItem('isAuthenticated', 'true');
+        setIsAuthenticated(true);
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('isAuthenticated');
+    setIsAuthenticated(false);
+  };
+
   const handleSectionChange = (docType: DocumentType, id: string, value: string) => {
     if (validationErrors.has(id)) {
       setValidationErrors(prev => {
@@ -766,6 +789,10 @@ Solicitação do usuário: "${refinePrompt}"
     });
   };
 
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
        <div className="flex flex-col md:flex-row h-screen">
@@ -930,6 +957,15 @@ Solicitação do usuário: "${refinePrompt}"
                     </div>
                   </div>
                 </div>
+            </div>
+            <div className="mt-auto pt-4 border-t border-slate-200">
+                <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
+                >
+                    <Icon name="sign-out-alt" />
+                    Sair
+                </button>
             </div>
           </aside>
           
