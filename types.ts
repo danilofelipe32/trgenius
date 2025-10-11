@@ -5,6 +5,7 @@ export interface Section {
   placeholder: string;
   hasGen: boolean;
   hasRiskAnalysis?: boolean;
+  tooltip?: string;
 }
 
 export interface DocumentSection {

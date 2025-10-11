@@ -20,13 +20,17 @@ interface SectionProps {
   onEdit?: () => void;
   isLoading?: boolean;
   hasError?: boolean;
+  tooltip?: string;
 }
 
-const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChange, onGenerate, hasGen, onAnalyze, hasRiskAnalysis, onEdit, isLoading, hasError }) => {
+const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChange, onGenerate, hasGen, onAnalyze, hasRiskAnalysis, onEdit, isLoading, hasError, tooltip }) => {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
-        <label htmlFor={id} className={`block text-lg font-semibold ${hasError ? 'text-red-600' : 'text-slate-700'}`}>{title}</label>
+        <div className="flex items-center gap-2">
+            <label htmlFor={id} className={`block text-lg font-semibold ${hasError ? 'text-red-600' : 'text-slate-700'}`}>{title}</label>
+            {tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={tooltip} />}
+        </div>
         <div className="flex items-center gap-2">
            {value && value.trim().length > 0 && onEdit && (
              <button
@@ -143,24 +147,24 @@ const App: React.FC = () => {
   
   // Sections definitions
   const etpSections: SectionType[] = [
-    { id: 'etp-input-introducao', title: '1. Introdução', placeholder: 'Apresentação do objetivo da contratação, justificativa e contexto...', hasGen: true },
-    { id: 'etp-input-demanda', title: '2. Demanda', placeholder: 'Descrição detalhada da necessidade a ser atendida pela contratação...', hasGen: true },
-    { id: 'etp-input-analise-demanda', title: '3. Análise da Demanda', placeholder: 'Avaliação da necessidade, incluindo levantamento de dados e informações relevantes...', hasGen: true },
-    { id: 'etp-input-levantamento-solucoes', title: '4. Levantamento de Soluções', placeholder: 'Identificação de possíveis soluções para atender à demanda...', hasGen: true },
-    { id: 'etp-input-analise-solucoes', title: '5. Análise das Soluções', placeholder: 'Avaliação detalhada de cada solução identificada...', hasGen: true },
-    { id: 'etp-input-recomendacao', title: '6. Recomendação da Solução', placeholder: 'Indicação da solução mais adequada para a contratação...', hasGen: true },
-    { id: 'etp-input-anexos', title: '7. Anexos', placeholder: 'Documentos que complementam o estudo, como planilhas de custos, cronogramas...', hasGen: false }
+    { id: 'etp-input-introducao', title: '1. Introdução', placeholder: 'Apresentação do objetivo da contratação, justificativa e contexto...', hasGen: true, tooltip: "Conforme Art. 6º, XVII, da Lei 14.133/21, o ETP caracteriza o interesse público, a melhor solução e serve de base para o Termo de Referência. Descreva aqui o objetivo e o contexto da contratação." },
+    { id: 'etp-input-demanda', title: '2. Demanda', placeholder: 'Descrição detalhada da necessidade a ser atendida pela contratação...', hasGen: true, tooltip: "Detalhe a necessidade da Administração que motiva esta contratação. Inclua a avaliação da demanda do público-alvo e a motivação técnico-econômico-social, como previsto no Art. 6º, XIX, a)." },
+    { id: 'etp-input-analise-demanda', title: '3. Análise da Demanda', placeholder: 'Avaliação da necessidade, incluindo levantamento de dados e informações relevantes...', hasGen: true, tooltip: "Aprofunde a avaliação da necessidade, levantando dados e informações relevantes que justifiquem a contratação e seus quantitativos." },
+    { id: 'etp-input-levantamento-solucoes', title: '4. Levantamento de Soluções', placeholder: 'Identificação de possíveis soluções para atender à demanda...', hasGen: true, tooltip: "Identifique e descreva as diferentes soluções de mercado (produtos, serviços, tecnologias) que podem atender à demanda apresentada." },
+    { id: 'etp-input-analise-solucoes', title: '5. Análise das Soluções', placeholder: 'Avaliação detalhada de cada solução identificada...', hasGen: true, tooltip: "Avalie criticamente cada solução levantada, considerando aspectos técnicos, econômicos, de sustentabilidade e de viabilidade para a Administração." },
+    { id: 'etp-input-recomendacao', title: '6. Recomendação da Solução', placeholder: 'Indicação da solução mais adequada para a contratação...', hasGen: true, tooltip: "Com base na análise, indique e justifique qual a solução mais vantajosa e adequada para a contratação, explicando os motivos da escolha." },
+    { id: 'etp-input-anexos', title: '7. Anexos', placeholder: 'Documentos que complementam o estudo, como planilhas de custos, cronogramas...', hasGen: false, tooltip: "Inclua aqui referências a documentos complementares como pesquisas de mercado, planilhas de custos, cronogramas ou outros estudos relevantes." }
   ];
 
   const trSections: SectionType[] = [
-    { id: 'tr-input-objeto', title: '1. Objeto da Contratação', placeholder: 'Ex: Aquisição de 50 notebooks, com garantia de 24 meses...', hasGen: true, hasRiskAnalysis: true },
-    { id: 'tr-input-justificativa', title: '2. Justificativa e Quantitativos', placeholder: 'Ex: A contratação visa substituir equipamentos obsoletos...', hasGen: true },
-    { id: 'tr-input-execucao', title: '3. Condições de Execução e Garantia', placeholder: 'Ex: Entrega única em até 30 dias corridos...', hasGen: true },
-    { id: 'tr-input-obrigacoes', title: '4. Obrigações das Partes', placeholder: 'Ex: Contratada: Fornecer bens novos... Contratante: Efetuar o pagamento...', hasGen: true },
-    { id: 'tr-input-habilitacao', title: '5. Requisitos de Qualificação Técnica', placeholder: 'Ex: Apresentar Atestado de Capacidade Técnica...', hasGen: true },
-    { id: 'tr-input-pagamento', title: '6. Modelo de Pagamento e Dotação', placeholder: 'Ex: Pagamento em parcela única, em até 30 dias...', hasGen: true },
-    { id: 'tr-input-fiscalizacao', title: '7. Gestão e Fiscalização do Contrato', placeholder: 'Ex: A fiscalização será exercida por servidor(a) designado(a)...', hasGen: true },
-    { id: 'tr-input-sancoes', title: '8. Sanções Administrativas', placeholder: 'Ex: O descumprimento das cláusulas sujeitará a contratada...', hasGen: true }
+    { id: 'tr-input-objeto', title: '1. Objeto da Contratação', placeholder: 'Ex: Aquisição de 50 notebooks, com garantia de 24 meses...', hasGen: true, hasRiskAnalysis: true, tooltip: "Conforme Art. 40, I, defina de forma precisa, suficiente e clara o que será contratado, incluindo natureza, quantitativos, prazo e, se houver, possibilidade de prorrogação." },
+    { id: 'tr-input-justificativa', title: '2. Justificativa e Quantitativos', placeholder: 'Ex: A contratação visa substituir equipamentos obsoletos...', hasGen: true, tooltip: "Fundamente a necessidade da contratação, fazendo referência ao Estudo Técnico Preliminar (ETP) e justificando os quantitativos solicitados. (Art. 40, II)." },
+    { id: 'tr-input-execucao', title: '3. Condições de Execução e Garantia', placeholder: 'Ex: Entrega única em até 30 dias corridos...', hasGen: true, tooltip: "Descreva o modelo de execução do objeto, detalhando como, onde e quando o serviço será prestado ou o bem será entregue, incluindo prazos e garantias. (Art. 40, V, c))." },
+    { id: 'tr-input-obrigacoes', title: '4. Obrigações das Partes', placeholder: 'Ex: Contratada: Fornecer bens novos... Contratante: Efetuar o pagamento...', hasGen: true, tooltip: "Liste os deveres e responsabilidades tanto da empresa contratada quanto da Administração (contratante) durante a vigência do contrato. (Art. 40, V, f))." },
+    { id: 'tr-input-habilitacao', title: '5. Requisitos de Qualificação Técnica', placeholder: 'Ex: Apresentar Atestado de Capacidade Técnica...', hasGen: true, tooltip: "Especifique os requisitos técnicos que a empresa licitante deve comprovar para demonstrar sua capacidade de executar o objeto do contrato. (Art. 40, V, d))." },
+    { id: 'tr-input-pagamento', title: '6. Modelo de Pagamento e Dotação', placeholder: 'Ex: Pagamento em parcela única, em até 30 dias...', hasGen: true, tooltip: "Defina os critérios e o modelo de pagamento, incluindo prazos, condições e a dotação orçamentária que cobrirá a despesa. (Art. 40, V, e))." },
+    { id: 'tr-input-fiscalizacao', title: '7. Gestão e Fiscalização do Contrato', placeholder: 'Ex: A fiscalização será exercida por servidor(a) designado(a)...', hasGen: true, tooltip: "Estabeleça os mecanismos de fiscalização e gestão do contrato, indicando os responsáveis e como será feito o acompanhamento da execução. (Art. 40, V, g))." },
+    { id: 'tr-input-sancoes', title: '8. Sanções Administrativas', placeholder: 'Ex: O descumprimento das cláusulas sujeitará a contratada...', hasGen: true, tooltip: "Determine as sanções aplicáveis em caso de inadimplemento ou descumprimento das obrigações contratuais por parte da contratada. (Art. 40, V, h))." }
   ];
 
 
@@ -862,6 +866,7 @@ Solicitação do usuário: "${refinePrompt}"
                         isLoading={loadingSection === section.id}
                         onEdit={() => handleOpenEditModal('etp', section.id, section.title)}
                         hasError={validationErrors.has(section.id)}
+                        tooltip={section.tooltip}
                     />
                 ))}
                 <div className="flex justify-end mt-6">
@@ -908,6 +913,7 @@ Solicitação do usuário: "${refinePrompt}"
                         hasRiskAnalysis={section.hasRiskAnalysis}
                         onEdit={() => handleOpenEditModal('tr', section.id, section.title)}
                         hasError={validationErrors.has(section.id)}
+                        tooltip={section.tooltip}
                     />
                 ))}
                 <div className="flex justify-end mt-6">
