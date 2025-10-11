@@ -1,9 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Per guidelines, API key must come from process.env.API_KEY
-// and a single GoogleGenAI instance should be used.
-// The guidelines state: Assume this variable is pre-configured, valid, and accessible.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+// API key has been hardcoded for testing purposes on Netlify.
+const apiKey = "AIzaSyB1SGptDVNzOh888rzlNSkXCiT5P2goNo0";
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 export async function callGemini(prompt: string): Promise<string> {
   try {
