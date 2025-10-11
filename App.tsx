@@ -1124,7 +1124,9 @@ Solicitação do usuário: "${refinePrompt}"
             </div>
 
              <footer className="text-center mt-8 pt-6 border-t border-slate-200 text-slate-500 text-sm">
-                <p>Desenvolvido por um expert em React & IA.</p>
+                <a href="https://wa.me/5584999780963" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
+                    Desenvolvido por Danilo Arruda
+                </a>
             </footer>
           </main>
       </div>
