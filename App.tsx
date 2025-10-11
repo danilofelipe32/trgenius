@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
@@ -149,6 +149,12 @@ const App: React.FC = () => {
   // Inline rename state
   const [editingDoc, setEditingDoc] = useState<{ type: DocumentType; id: number } | null>(null);
   const [editingDocName, setEditingDocName] = useState('');
+
+  // Auto-save state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<string>('Salvo');
+  const debounceTimeoutRef = useRef<number | null>(null);
+  const etpContentRef = useRef(etpSectionsContent);
+  const trContentRef = useRef(trSectionsContent);
   
   // Sections definitions
   const etpSections: SectionType[] = [
@@ -239,6 +245,44 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isAuthenticated]);
 
+  // --- Auto-save Effects ---
+  useEffect(() => {
+      etpContentRef.current = etpSectionsContent;
+  }, [etpSectionsContent]);
+
+  useEffect(() => {
+      trContentRef.current = trSectionsContent;
+  }, [trSectionsContent]);
+  
+  // Debounced save on change
+  useEffect(() => {
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+
+      debounceTimeoutRef.current = window.setTimeout(() => {
+          setAutoSaveStatus('Salvando...');
+          storage.saveFormState('etpFormState', etpSectionsContent);
+          storage.saveFormState('trFormState', trSectionsContent);
+          setTimeout(() => setAutoSaveStatus('Salvo ✓'), 500);
+      }, 2000); // 2 seconds after user stops typing
+
+      return () => {
+          if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+      };
+  }, [etpSectionsContent, trSectionsContent]);
+
+  // Periodic save every 30 seconds
+  useEffect(() => {
+      const interval = setInterval(() => {
+          setAutoSaveStatus('Salvando...');
+          // Use refs to get the latest state, avoiding stale closures
+          storage.saveFormState('etpFormState', etpContentRef.current);
+          storage.saveFormState('trFormState', trContentRef.current);
+          setTimeout(() => setAutoSaveStatus('Salvo ✓'), 500);
+      }, 30000);
+
+      return () => clearInterval(interval);
+  }, []); // Run only once
+
   // --- Handlers ---
   const handleLogin = (success: boolean) => {
     if (success) {
@@ -261,12 +305,9 @@ const App: React.FC = () => {
       });
     }
 
+    setAutoSaveStatus('A escrever...');
     const updateFn = docType === 'etp' ? setEtpSectionsContent : setTrSectionsContent;
-    updateFn(prev => {
-        const newState = { ...prev, [id]: value };
-        storage.saveFormState(docType === 'etp' ? 'etpFormState' : 'trFormState', newState);
-        return newState;
-    });
+    updateFn(prev => ({ ...prev, [id]: value }));
   };
 
   const getRagContext = useCallback(() => {
@@ -326,12 +367,7 @@ const App: React.FC = () => {
     try {
       const generatedText = await callGemini(prompt);
       if (generatedText && !generatedText.startsWith("Erro:")) {
-        const updateFn = docType === 'etp' ? setEtpSectionsContent : setTrSectionsContent;
-        updateFn(prev => {
-          const newState = {...prev, [sectionId]: generatedText};
-          storage.saveFormState(docType === 'etp' ? 'etpFormState' : 'trFormState', newState);
-          return newState;
-        });
+        handleSectionChange(docType, sectionId, generatedText);
       } else {
         setMessage({ title: 'Erro de Geração', text: generatedText });
       }
@@ -1063,7 +1099,8 @@ Solicitação do usuário: "${refinePrompt}"
                     />
                   );
                 })}
-                <div className="flex justify-end mt-6 gap-3">
+                <div className="flex justify-end items-center mt-6 gap-3">
+                    <span className="text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
                     <button onClick={handleClearForm('etp')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">
                         <Icon name="eraser" className="mr-2" /> Limpar Formulário
                     </button>
@@ -1113,7 +1150,8 @@ Solicitação do usuário: "${refinePrompt}"
                         tooltip={section.tooltip}
                     />
                 ))}
-                <div className="flex justify-end mt-6 gap-3">
+                <div className="flex justify-end items-center mt-6 gap-3">
+                    <span className="text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
                     <button onClick={handleClearForm('tr')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">
                         <Icon name="eraser" className="mr-2" /> Limpar Formulário
                     </button>
