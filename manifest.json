@@ -6,9 +6,11 @@
   "scope": ".",
   "id": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#f8fafc",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "government"],
   "icons": [
     {
       "src": "icons/icon192.png",

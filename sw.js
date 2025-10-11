@@ -1,6 +1,7 @@
-const CACHE_NAME = 'tr-genius-pwa-v2';
+const CACHE_NAME = 'tr-genius-pwa-v3';
 const urlsToCache = [
   '/',
+  '/_redirects',
   '/index.html',
   '/index.tsx',
   '/App.tsx',
