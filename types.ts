@@ -1,4 +1,3 @@
-
 export interface Section {
   id: string;
   title: string;
@@ -6,10 +5,17 @@ export interface Section {
   hasGen: boolean;
   hasRiskAnalysis?: boolean;
   tooltip?: string;
+  isAttachmentSection?: boolean;
 }
 
 export interface DocumentSection {
   [key: string]: string;
+}
+
+export interface Attachment {
+  name: string;
+  type: string;
+  content: string; // base64 encoded content
 }
 
 export interface SavedDocument {
@@ -17,6 +23,7 @@ export interface SavedDocument {
   name: string;
   createdAt: string;
   sections: DocumentSection;
+  attachments?: Attachment[];
 }
 
 export type DocumentType = 'etp' | 'tr';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext } from './types';
+import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
 import { processSingleUploadedFile, chunkText } from './services/ragService';
@@ -117,6 +117,7 @@ const App: React.FC = () => {
   const [savedTRs, setSavedTRs] = useState<SavedDocument[]>([]);
   const [etpSectionsContent, setEtpSectionsContent] = useState<Record<string, string>>({});
   const [trSectionsContent, setTrSectionsContent] = useState<Record<string, string>>({});
+  const [etpAttachments, setEtpAttachments] = useState<Attachment[]>([]);
   const [loadedEtpForTr, setLoadedEtpForTr] = useState<{ name: string; content: string } | null>(null);
 
   // State for API and files
@@ -134,6 +135,7 @@ const App: React.FC = () => {
   const [analysisContent, setAnalysisContent] = useState<{ title: string; content: string | null }>({ title: '', content: null });
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
+  const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -153,7 +155,7 @@ const App: React.FC = () => {
     { id: 'etp-input-levantamento-solucoes', title: '4. Levantamento de Soluções', placeholder: 'Identificação de possíveis soluções para atender à demanda...', hasGen: true, tooltip: "Identifique e descreva as diferentes soluções de mercado (produtos, serviços, tecnologias) que podem atender à demanda apresentada." },
     { id: 'etp-input-analise-solucoes', title: '5. Análise das Soluções', placeholder: 'Avaliação detalhada de cada solução identificada...', hasGen: true, tooltip: "Avalie criticamente cada solução levantada, considerando aspectos técnicos, econômicos, de sustentabilidade e de viabilidade para a Administração." },
     { id: 'etp-input-recomendacao', title: '6. Recomendação da Solução', placeholder: 'Indicação da solução mais adequada para a contratação...', hasGen: true, tooltip: "Com base na análise, indique e justifique qual a solução mais vantajosa e adequada para a contratação, explicando os motivos da escolha." },
-    { id: 'etp-input-anexos', title: '7. Anexos', placeholder: 'Documentos que complementam o estudo, como planilhas de custos, cronogramas...', hasGen: false, tooltip: "Inclua aqui referências a documentos complementares como pesquisas de mercado, planilhas de custos, cronogramas ou outros estudos relevantes." }
+    { id: 'etp-input-anexos', title: '7. Anexos', placeholder: 'Liste aqui referências a documentos complementares ou adicione notas sobre os ficheiros anexados...', hasGen: false, tooltip: "Inclua aqui referências a documentos complementares como pesquisas de mercado, planilhas de custos, cronogramas ou outros estudos relevantes.", isAttachmentSection: true }
   ];
 
   const trSections: SectionType[] = [
@@ -171,9 +173,19 @@ const App: React.FC = () => {
   // --- Effects ---
   useEffect(() => {
     const loadInitialData = async () => {
-        setSavedETPs(storage.getSavedETPs());
+        const etps = storage.getSavedETPs();
+        setSavedETPs(etps);
         setSavedTRs(storage.getSavedTRs());
-        setEtpSectionsContent(storage.loadFormState('etpFormState') as Record<string, string> || {});
+
+        const etpFormState = storage.loadFormState('etpFormState') as Record<string, string> || {};
+        setEtpSectionsContent(etpFormState);
+
+        // Find the last active ETP to load its attachments
+        const lastActiveEtp = etps.find(etp => JSON.stringify(etp.sections) === JSON.stringify(etpFormState));
+        if (lastActiveEtp) {
+            setEtpAttachments(lastActiveEtp.attachments || []);
+        }
+
         setTrSectionsContent(storage.loadFormState('trFormState') as Record<string, string> || {});
         
         const userFiles = storage.getStoredFiles();
@@ -345,35 +357,49 @@ const App: React.FC = () => {
     }
 
     const name = `${docType.toUpperCase()} ${new Date().toLocaleString('pt-BR').replace(/[/:,]/g, '_')}`;
-    const newDoc: SavedDocument = {
-      id: Date.now(),
-      name,
-      createdAt: new Date().toISOString(),
-      sections: { ...sections }
-    };
-
+    
     if (docType === 'etp') {
+      const newDoc: SavedDocument = {
+        id: Date.now(),
+        name,
+        createdAt: new Date().toISOString(),
+        sections: { ...sections },
+        attachments: etpAttachments,
+      };
       const updatedETPs = [...savedETPs, newDoc];
       setSavedETPs(updatedETPs);
       storage.saveETPs(updatedETPs);
+      setMessage({ title: "Sucesso", text: `ETP "${name}" guardado com sucesso!` });
+      setPreviewContext({ type: 'etp', id: newDoc.id });
+      setIsPreviewModalOpen(true);
     } else {
+      const newDoc: SavedDocument = {
+        id: Date.now(),
+        name,
+        createdAt: new Date().toISOString(),
+        sections: { ...sections }
+      };
       const updatedTRs = [...savedTRs, newDoc];
       setSavedTRs(updatedTRs);
       storage.saveTRs(updatedTRs);
+      setMessage({ title: "Sucesso", text: `TR "${name}" guardado com sucesso!` });
+      setPreviewContext({ type: docType, id: newDoc.id });
+      setIsPreviewModalOpen(true);
     }
-    
-    setMessage({ title: "Sucesso", text: `${docType.toUpperCase()} "${name}" guardado com sucesso!` });
-    setPreviewContext({ type: docType, id: newDoc.id });
-    setIsPreviewModalOpen(true);
   };
   
   const handleLoadDocument = (docType: DocumentType, id: number) => {
     const docs = docType === 'etp' ? savedETPs : savedTRs;
     const docToLoad = docs.find(doc => doc.id === id);
     if(docToLoad) {
-      const setContent = docType === 'etp' ? setEtpSectionsContent : setTrSectionsContent;
-      setContent(docToLoad.sections);
-      storage.saveFormState(docType === 'etp' ? 'etpFormState' : 'trFormState', docToLoad.sections);
+      if (docType === 'etp') {
+        setEtpSectionsContent(docToLoad.sections);
+        setEtpAttachments(docToLoad.attachments || []);
+        storage.saveFormState('etpFormState', docToLoad.sections);
+      } else {
+        setTrSectionsContent(docToLoad.sections);
+        storage.saveFormState('trFormState', docToLoad.sections);
+      }
       setMessage({ title: 'Documento Carregado', text: `O ${docType.toUpperCase()} "${docToLoad.name}" foi carregado.` });
       setActiveView(docType);
       if (window.innerWidth < 768) setIsSidebarOpen(false);
@@ -484,6 +510,45 @@ const App: React.FC = () => {
       const updatedFiles = uploadedFiles.filter((_, i) => i !== index);
       setUploadedFiles(updatedFiles);
       storage.saveStoredFiles(updatedFiles.filter(f => !f.isCore));
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleEtpAttachmentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    const newAttachments: Attachment[] = [];
+    for (const file of Array.from(files)) {
+        if (etpAttachments.some(att => att.name === file.name)) {
+            setMessage({ title: 'Aviso', text: `O ficheiro "${file.name}" já foi anexado.` });
+            continue;
+        }
+        try {
+            const base64Content = await fileToBase64(file);
+            newAttachments.push({
+                name: file.name,
+                type: file.type,
+                content: base64Content,
+            });
+        } catch (error) {
+            console.error("Error converting file to base64", error);
+            setMessage({ title: 'Erro', text: `Não foi possível processar o ficheiro "${file.name}".` });
+        }
+    }
+    setEtpAttachments(prev => [...prev, ...newAttachments]);
+    event.target.value = ''; 
+  };
+
+  const handleRemoveEtpAttachment = (indexToRemove: number) => {
+    setEtpAttachments(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handleLoadEtpForTr = (etpId: string) => {
@@ -605,6 +670,25 @@ Solicitação do usuário: "${refinePrompt}"
     }
   };
 
+  const handleClearForm = (docType: DocumentType) => () => {
+    if (docType === 'etp') {
+        setEtpSectionsContent({});
+        setEtpAttachments([]);
+        storage.saveFormState('etpFormState', {});
+    } else {
+        setTrSectionsContent({});
+        setLoadedEtpForTr(null);
+        const etpSelector = document.getElementById('etp-selector') as HTMLSelectElement;
+        if (etpSelector) etpSelector.value = "";
+        storage.saveFormState('trFormState', {});
+    }
+    setMessage({ title: 'Formulário Limpo', text: `O formulário do ${docType.toUpperCase()} foi limpo.` });
+  };
+
+  const getAttachmentDataUrl = (attachment: Attachment) => {
+    return `data:${attachment.type};base64,${attachment.content}`;
+  };
+
   const renderPreviewContent = () => {
     if (!previewContext.type || previewContext.id === null) return null;
     const { type, id } = previewContext;
@@ -639,6 +723,25 @@ Solicitação do usuário: "${refinePrompt}"
             return null;
           })}
         </div>
+
+        {doc.attachments && doc.attachments.length > 0 && (
+            <div className="mt-8">
+                <h2 className="text-xl font-bold text-slate-700 mb-3">Anexos</h2>
+                <div className="space-y-2">
+                    {doc.attachments.map((att, index) => (
+                        <div key={index} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg text-sm">
+                            <div className="flex items-center gap-2 truncate">
+                                <Icon name="file-alt" className="text-slate-500" />
+                                <span className="font-medium text-slate-800 truncate">{att.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <button onClick={() => setViewingAttachment(att)} className="text-blue-600 hover:text-blue-800 font-semibold">Visualizar</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
       </div>
     );
   };
@@ -853,7 +956,50 @@ Solicitação do usuário: "${refinePrompt}"
             </header>
             
             <div className={`${activeView === 'etp' ? 'block' : 'hidden'}`}>
-                {etpSections.map(section => (
+                {etpSections.map(section => {
+                  if (section.isAttachmentSection) {
+                    return (
+                        <div key={section.id} className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
+                            <div className="flex justify-between items-center mb-3">
+                                 <div className="flex items-center gap-2">
+                                    <label className="block text-lg font-semibold text-slate-700">{section.title}</label>
+                                    {section.tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={section.tooltip} />}
+                                 </div>
+                            </div>
+                            <textarea
+                                id={section.id}
+                                value={etpSectionsContent[section.id] || ''}
+                                onChange={(e) => handleSectionChange('etp', section.id, e.target.value)}
+                                placeholder={section.placeholder}
+                                className="w-full h-24 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors border-slate-200 focus:ring-blue-500 mb-4"
+                            />
+                            
+                            {etpAttachments.length > 0 && (
+                                <div className="space-y-2 mb-4">
+                                    {etpAttachments.map((file, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg text-sm">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Icon name="file-alt" className="text-slate-500" />
+                                                <span className="font-medium text-slate-800 truncate">{file.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <button onClick={() => setViewingAttachment(file)} className="text-blue-600 hover:text-blue-800 font-semibold">Visualizar</button>
+                                                <button onClick={() => handleRemoveEtpAttachment(index)} className="text-red-600 hover:text-red-800 font-semibold">Remover</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <label className="w-full flex items-center justify-center px-4 py-3 bg-green-50 border-2 border-dashed border-green-200 text-green-700 rounded-lg cursor-pointer hover:bg-green-100 transition-colors">
+                                <Icon name="paperclip" className="mr-2" />
+                                <span className="font-semibold">Anexar Ficheiros</span>
+                                <input type="file" className="hidden" multiple onChange={handleEtpAttachmentUpload} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*" />
+                            </label>
+                        </div>
+                    );
+                  }
+                  return (
                     <Section
                         key={section.id}
                         id={section.id}
@@ -868,8 +1014,12 @@ Solicitação do usuário: "${refinePrompt}"
                         hasError={validationErrors.has(section.id)}
                         tooltip={section.tooltip}
                     />
-                ))}
-                <div className="flex justify-end mt-6">
+                  );
+                })}
+                <div className="flex justify-end mt-6 gap-3">
+                    <button onClick={handleClearForm('etp')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">
+                        <Icon name="eraser" className="mr-2" /> Limpar Formulário
+                    </button>
                     <button onClick={() => handleSaveDocument('etp')} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md">
                         <Icon name="save" className="mr-2" /> Salvar ETP
                     </button>
@@ -916,7 +1066,10 @@ Solicitação do usuário: "${refinePrompt}"
                         tooltip={section.tooltip}
                     />
                 ))}
-                <div className="flex justify-end mt-6">
+                <div className="flex justify-end mt-6 gap-3">
+                    <button onClick={handleClearForm('tr')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">
+                        <Icon name="eraser" className="mr-2" /> Limpar Formulário
+                    </button>
                     <button onClick={() => handleSaveDocument('tr')} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md">
                         <Icon name="save" className="mr-2" /> Salvar TR
                     </button>
@@ -1015,6 +1168,33 @@ Solicitação do usuário: "${refinePrompt}"
             <pre className="whitespace-pre-wrap word-wrap font-sans text-sm text-slate-700">{analysisContent.content}</pre>
           </div>
       </Modal>
+
+      <Modal isOpen={!!viewingAttachment} onClose={() => setViewingAttachment(null)} title={viewingAttachment?.name || 'Visualizador de Anexo'} maxWidth="max-w-4xl">
+        {viewingAttachment && (
+            <div className="w-full h-[75vh]">
+                {viewingAttachment.type.startsWith('image/') ? (
+                    <img src={getAttachmentDataUrl(viewingAttachment)} alt={viewingAttachment.name} className="max-w-full max-h-full mx-auto object-contain" />
+                ) : viewingAttachment.type === 'application/pdf' ? (
+                    <object data={getAttachmentDataUrl(viewingAttachment)} type="application/pdf" width="100%" height="100%">
+                        <p>O seu navegador não suporta a pré-visualização de PDFs. <a href={getAttachmentDataUrl(viewingAttachment)} download={viewingAttachment.name} className="text-blue-600 hover:underline">Clique aqui para fazer o download.</a></p>
+                    </object>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-full bg-slate-100 rounded-lg p-8">
+                        <Icon name="file-download" className="text-5xl text-slate-400 mb-4" />
+                        <p className="text-slate-700 text-lg mb-2">A pré-visualização não está disponível para este tipo de ficheiro.</p>
+                        <p className="text-slate-500 mb-6">({viewingAttachment.type})</p>
+                        <a 
+                            href={getAttachmentDataUrl(viewingAttachment)} 
+                            download={viewingAttachment.name}
+                            className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            Fazer Download
+                        </a>
+                    </div>
+                )}
+            </div>
+        )}
+    </Modal>
 
     </div>
   );
