@@ -547,18 +547,31 @@ Solicitação do usuário: "${refinePrompt}"
     const allSections = type === 'etp' ? etpSections : trSections;
 
     return (
-        <div>
-            <h1 className="text-2xl font-bold mb-2 text-slate-800">{doc.name}</h1>
-            <p className="text-xs text-slate-400 mb-6">Criado em: {new Date(doc.createdAt).toLocaleString('pt-BR')}</p>
-            {allSections.map(section => (
-                doc.sections[section.id] && (
-                    <div key={section.id} className="mb-6">
-                        <h2 className="text-lg font-semibold border-b border-slate-200 pb-2 mb-2 text-slate-700">{section.title}</h2>
-                        <p className="whitespace-pre-wrap text-slate-600 font-sans leading-relaxed">{doc.sections[section.id]}</p>
-                    </div>
-                )
-            ))}
+      <div>
+        <div className="pb-4 border-b border-slate-200 mb-6">
+          <h1 className="text-3xl font-extrabold text-slate-800 leading-tight">{doc.name}</h1>
+          <p className="text-sm text-slate-500 mt-1">Criado em: {new Date(doc.createdAt).toLocaleString('pt-BR')}</p>
         </div>
+        
+        <div className="space-y-8">
+          {allSections.map(section => {
+            const content = doc.sections[section.id];
+            if (content && content.trim()) {
+              return (
+                <div key={section.id}>
+                  <h2 className="text-xl font-bold text-slate-700 mb-3">{section.title}</h2>
+                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="whitespace-pre-wrap text-slate-800 font-sans leading-relaxed text-base">
+                      {content}
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })}
+        </div>
+      </div>
     );
   };
 
