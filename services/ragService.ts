@@ -1,4 +1,3 @@
-
 import { UploadedFile } from '../types';
 
 declare const pdfjsLib: any;
@@ -54,47 +53,41 @@ const getTextFromPdf = async (arrayBuffer: ArrayBuffer): Promise<string> => {
   return fullText;
 };
 
-export const processUploadedFiles = async (
-  files: FileList, 
-  existingFiles: UploadedFile[]
-): Promise<{ newFiles: UploadedFile[], error?: string }> => {
-  if (!files.length) {
-    return { newFiles: [] };
+export const processSingleUploadedFile = async (
+  file: File,
+  existingFileNames: string[]
+): Promise<UploadedFile> => {
+  if (existingFileNames.includes(file.name)) {
+    throw new Error('Ficheiro já existe.');
   }
 
-  const newFiles: UploadedFile[] = [];
+  try {
+    let text: string;
+    const fileType = file.type;
+    const fileName = file.name.toLowerCase();
 
-  for (const file of Array.from(files)) {
-    if (existingFiles.some(f => f.name === file.name)) {
-      continue;
+    if (fileType === "application/pdf" || fileName.endsWith('.pdf')) {
+      text = await readFileAsArrayBuffer(file).then(getTextFromPdf);
+    } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith('.docx')) {
+      text = await readFileAsArrayBuffer(file).then(getTextFromDocx);
+    } else if (fileType === "text/plain" || fileName.endsWith('.txt')) {
+      text = await readTextFile(file);
+    } else {
+      throw new Error(`Formato não suportado`);
     }
 
-    try {
-      let text: string;
-      const fileType = file.type;
-      const fileName = file.name.toLowerCase();
-
-      if (fileType === "application/pdf" || fileName.endsWith('.pdf')) {
-        text = await readFileAsArrayBuffer(file).then(getTextFromPdf);
-      } else if (fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || fileName.endsWith('.docx')) {
-        text = await readFileAsArrayBuffer(file).then(getTextFromDocx);
-      } else if (fileType === "text/plain" || fileName.endsWith('.txt')) {
-        text = await readTextFile(file);
-      } else {
-        return { newFiles, error: `Formato de ficheiro não suportado: ${file.name}` };
-      }
-
-      const chunks = chunkText(text);
-      newFiles.push({
-        name: file.name,
-        chunks,
-        selected: true
-      });
-    } catch (error: any) {
-      console.error(`Erro ao ler o ficheiro ${file.name}:`, error);
-      return { newFiles, error: `Não foi possível ler o ficheiro ${file.name}.` };
+    if (!text || text.trim().length === 0) {
+        throw new Error('Ficheiro vazio ou ilegível.');
     }
+
+    const chunks = chunkText(text);
+    return {
+      name: file.name,
+      chunks,
+      selected: true
+    };
+  } catch (error: any) {
+    console.error(`Erro ao processar o ficheiro ${file.name}:`, error);
+    throw new Error(error.message || `Não foi possível ler o ficheiro.`);
   }
-  
-  return { newFiles };
 };

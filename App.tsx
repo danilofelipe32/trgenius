@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
-import { processUploadedFiles, chunkText } from './services/ragService';
+import { processSingleUploadedFile, chunkText } from './services/ragService';
 import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
 
@@ -117,9 +117,12 @@ const App: React.FC = () => {
 
   // State for API and files
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [processingFiles, setProcessingFiles] = useState<Array<{ name: string; status: 'processing' | 'success' | 'error'; message?: string }>>([]);
+
 
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [openSidebarSections, setOpenSidebarSections] = useState({ etps: true, trs: true, rag: true });
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewContext, setPreviewContext] = useState<PreviewContext>({ type: null, id: null });
@@ -417,17 +420,48 @@ const App: React.FC = () => {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    const result = await processUploadedFiles(files, uploadedFiles);
-    if(result.error) {
-      setMessage({ title: 'Erro de Upload', text: result.error });
+    const filesToProcess = Array.from(files).map(file => ({
+      name: file.name,
+      status: 'processing' as const,
+      message: ''
+    }));
+    setProcessingFiles(filesToProcess);
+
+    const successfullyProcessed: UploadedFile[] = [];
+    const currentFileNames = uploadedFiles.map(f => f.name);
+
+    for (const file of Array.from(files)) {
+      try {
+        const processedFile = await processSingleUploadedFile(file, [
+          ...currentFileNames, 
+          ...successfullyProcessed.map(f => f.name)
+        ]);
+        successfullyProcessed.push(processedFile);
+
+        setProcessingFiles(prev =>
+          prev.map(p => (p.name === file.name ? { ...p, status: 'success' } : p))
+        );
+      } catch (error: any) {
+        setProcessingFiles(prev =>
+          prev.map(p =>
+            p.name === file.name ? { ...p, status: 'error', message: error.message } : p
+          )
+        );
+      }
     }
-    if(result.newFiles.length > 0) {
-      const updatedFiles = [...uploadedFiles, ...result.newFiles];
+
+    if (successfullyProcessed.length > 0) {
+      const updatedFiles = [...uploadedFiles, ...successfullyProcessed];
       setUploadedFiles(updatedFiles);
       storage.saveStoredFiles(updatedFiles.filter(f => !f.isCore));
     }
+
+    setTimeout(() => {
+      setProcessingFiles([]);
+    }, 5000);
+
     event.target.value = ''; // Reset input
   };
   
@@ -608,6 +642,10 @@ Solicitação do usuário: "${refinePrompt}"
     setValidationErrors(new Set());
   };
 
+  const toggleSidebarSection = (section: 'etps' | 'trs' | 'rag') => {
+    setOpenSidebarSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
        <div className="flex flex-col md:flex-row h-screen">
@@ -626,109 +664,176 @@ Solicitação do usuário: "${refinePrompt}"
                 Seu assistente para criar Estudos Técnicos e Termos de Referência, em conformidade com a <b>Lei 14.133/21</b>.
             </p>
             
-            <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-6">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">ETPs Salvos</h3>
-                  {savedETPs.length > 0 ? (
-                    <ul className="space-y-2">
-                      {savedETPs.map(etp => (
-                        <li key={etp.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                          {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
-                              <input
-                                  type="text"
-                                  value={editingDocName}
-                                  onChange={(e) => setEditingDocName(e.target.value)}
-                                  onBlur={handleRenameDocument}
-                                  onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleRenameDocument();
-                                      if (e.key === 'Escape') setEditingDoc(null);
-                                  }}
-                                  className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
-                                  autoFocus
-                              />
-                          ) : (
-                              <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
-                          )}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
-                            <button onClick={() => handleLoadDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
-                            <button onClick={() => { setPreviewContext({ type: 'etp', id: etp.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
-                            <button onClick={() => handleDeleteDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <p className="text-sm text-slate-400 italic">Nenhum ETP salvo.</p>}
+            <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
+                
+                {/* Accordion Section: ETPs */}
+                <div className="py-2">
+                  <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">ETPs Salvos</h3>
+                    <Icon name={openSidebarSections.etps ? 'chevron-up' : 'chevron-down'} className="text-slate-400" />
+                  </button>
+                  {openSidebarSections.etps && (
+                    <div className="mt-3 space-y-2">
+                      {savedETPs.length > 0 ? (
+                        <ul className="space-y-2">
+                          {savedETPs.map(etp => (
+                            <li key={etp.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                              {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
+                                  <input
+                                      type="text"
+                                      value={editingDocName}
+                                      onChange={(e) => setEditingDocName(e.target.value)}
+                                      onBlur={handleRenameDocument}
+                                      onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleRenameDocument();
+                                          if (e.key === 'Escape') setEditingDoc(null);
+                                      }}
+                                      className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
+                                      autoFocus
+                                  />
+                              ) : (
+                                  <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
+                              )}
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
+                                <button onClick={() => handleLoadDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
+                                <button onClick={() => { setPreviewContext({ type: 'etp', id: etp.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
+                                <button onClick={() => handleDeleteDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum ETP salvo.</p>}
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">TRs Salvos</h3>
-                   {savedTRs.length > 0 ? (
-                    <ul className="space-y-2">
-                      {savedTRs.map(tr => (
-                        <li key={tr.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                           {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
-                              <input
-                                  type="text"
-                                  value={editingDocName}
-                                  onChange={(e) => setEditingDocName(e.target.value)}
-                                  onBlur={handleRenameDocument}
-                                  onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleRenameDocument();
-                                      if (e.key === 'Escape') setEditingDoc(null);
-                                  }}
-                                  className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
-                                  autoFocus
-                              />
-                          ) : (
-                              <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
-                          )}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
-                            <button onClick={() => handleLoadDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
-                            <button onClick={() => { setPreviewContext({ type: 'tr', id: tr.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
-                            <button onClick={() => handleDeleteDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <p className="text-sm text-slate-400 italic">Nenhum TR salvo.</p>}
+                {/* Accordion Section: TRs */}
+                <div className="py-2">
+                  <button onClick={() => toggleSidebarSection('trs')} className="w-full flex justify-between items-center text-left">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">TRs Salvos</h3>
+                    <Icon name={openSidebarSections.trs ? 'chevron-up' : 'chevron-down'} className="text-slate-400" />
+                  </button>
+                   {openSidebarSections.trs && (
+                    <div className="mt-3 space-y-2">
+                      {savedTRs.length > 0 ? (
+                        <ul className="space-y-2">
+                          {savedTRs.map(tr => (
+                            <li key={tr.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                               {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
+                                  <input
+                                      type="text"
+                                      value={editingDocName}
+                                      onChange={(e) => setEditingDocName(e.target.value)}
+                                      onBlur={handleRenameDocument}
+                                      onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleRenameDocument();
+                                          if (e.key === 'Escape') setEditingDoc(null);
+                                      }}
+                                      className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
+                                      autoFocus
+                                  />
+                              ) : (
+                                  <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
+                              )}
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
+                                <button onClick={() => handleLoadDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
+                                <button onClick={() => { setPreviewContext({ type: 'tr', id: tr.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
+                                <button onClick={() => handleDeleteDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum TR salvo.</p>}
+                    </div>
+                   )}
                 </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Documentos de Apoio (RAG)</h3>
-                  <div className="space-y-2">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 truncate">
-                          <input type="checkbox" checked={file.selected} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-4 w-4 text-blue-600 rounded" />
-                          <span className="truncate">{file.name}</span>
-                           {file.isCore && <Icon name="lock" className="text-slate-400 text-xs" title="Base de Conhecimento Principal" />}
-                        </label>
-                        {!file.isCore && (
-                            <button onClick={() => handleDeleteFile(index)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                   <label className="mt-4 w-full flex items-center justify-center px-4 py-3 bg-blue-50 border-2 border-dashed border-blue-200 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
-                      <Icon name="upload" className="mr-2" />
-                      <span className="text-sm font-semibold">Carregar ficheiros</span>
-                      <input type="file" className="hidden" multiple onChange={handleFileUpload} accept=".pdf,.docx,.txt" />
-                  </label>
+                {/* Accordion Section: RAG */}
+                <div className="py-2">
+                  <button onClick={() => toggleSidebarSection('rag')} className="w-full flex justify-between items-center text-left">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Documentos de Apoio (RAG)</h3>
+                    <Icon name={openSidebarSections.rag ? 'chevron-up' : 'chevron-down'} className="text-slate-400" />
+                  </button>
+                  {openSidebarSections.rag && (
+                    <div className="mt-3 space-y-2">
+                      {processingFiles.length > 0 && (
+                        <div className="mb-3 p-2 bg-slate-100 rounded-lg">
+                          <h4 className="text-xs font-bold text-slate-600 mb-2">A processar ficheiros...</h4>
+                           <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+                              <div 
+                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" 
+                                style={{ width: `${(processingFiles.filter(f => f.status !== 'processing').length / processingFiles.length) * 100}%` }}
+                              ></div>
+                          </div>
+                          <ul className="space-y-1">
+                              {processingFiles.map(file => (
+                                  <li key={file.name} className="flex items-center text-xs justify-between">
+                                    <div className="flex items-center truncate">
+                                      {file.status === 'processing' && <Icon name="spinner" className="fa-spin text-slate-400 w-4" />}
+                                      {file.status === 'success' && <Icon name="check-circle" className="text-green-500 w-4" />}
+                                      {file.status === 'error' && <Icon name="exclamation-circle" className="text-red-500 w-4" />}
+                                      <span className="ml-2 truncate flex-1">{file.name}</span>
+                                    </div>
+                                      {file.status === 'error' && <span className="ml-2 text-red-600 font-semibold flex-shrink-0">{file.message}</span>}
+                                  </li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 truncate">
+                            <input type="checkbox" checked={file.selected} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-4 w-4 text-blue-600 rounded" />
+                            <span className="truncate">{file.name}</span>
+                            {file.isCore && <Icon name="lock" className="text-slate-400 text-xs" title="Base de Conhecimento Principal" />}
+                          </label>
+                          {!file.isCore && (
+                              <button onClick={() => handleDeleteFile(index)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
+                          )}
+                        </div>
+                      ))}
+                      <label className="mt-2 w-full flex items-center justify-center px-4 py-3 bg-blue-50 border-2 border-dashed border-blue-200 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                          <Icon name="upload" className="mr-2" />
+                          <span className="text-sm font-semibold">Carregar ficheiros</span>
+                          <input type="file" className="hidden" multiple onChange={handleFileUpload} accept=".pdf,.docx,.txt" />
+                      </label>
+                    </div>
+                  )}
                 </div>
             </div>
           </aside>
           
           <main className="flex-1 p-6 md:p-10 overflow-y-auto" onClick={() => { if(window.innerWidth < 768) setIsSidebarOpen(false) }}>
-             <header className="flex justify-between items-start mb-6">
-                <div>
-                    <div className="flex gap-2 mb-4 border-b border-slate-200">
-                        <button onClick={() => switchView('etp')} className={`py-2 px-4 font-semibold text-lg transition-colors ${activeView === 'etp' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Gerador de ETP</button>
-                        <button onClick={() => switchView('tr')} className={`py-2 px-4 font-semibold text-lg transition-colors ${activeView === 'tr' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Gerador de TR</button>
-                    </div>
+             <header className="flex justify-between items-center mb-8">
+                <div className="w-full">
+                  <div className="border-b border-slate-200">
+                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                      <button
+                        onClick={() => switchView('etp')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors ${
+                          activeView === 'etp'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        Gerador de ETP
+                      </button>
+                      <button
+                        onClick={() => switchView('tr')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors ${
+                           activeView === 'tr'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        Gerador de TR
+                      </button>
+                    </nav>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex-shrink-0 ml-4">
                     <button onClick={() => setIsInfoModalOpen(true)} className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-blue-600 transition-colors flex items-center justify-center" title="Informações"><Icon name="info-circle" /></button>
                 </div>
             </header>
