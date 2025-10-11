@@ -34,7 +34,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-slate-700">
-              Nome
+              Usuário
             </label>
             <div className="mt-1 relative">
               <input
