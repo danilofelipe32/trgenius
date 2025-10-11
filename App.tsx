@@ -203,6 +203,8 @@ const App: React.FC = () => {
     const handleResize = () => {
         if (window.innerWidth >= 768) {
             setIsSidebarOpen(true);
+        } else {
+            setIsSidebarOpen(false);
         }
     };
     window.addEventListener('resize', handleResize);
@@ -649,11 +651,19 @@ Solicitação do usuário: "${refinePrompt}"
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
        <div className="flex flex-col md:flex-row h-screen">
+          {/* Mobile Overlay */}
+          {isSidebarOpen && (
+            <div 
+              className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-10 transition-opacity"
+              onClick={() => setIsSidebarOpen(false)}
+            ></div>
+          )}
+          
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="md:hidden fixed top-4 left-4 z-30 bg-blue-600 text-white w-10 h-10 rounded-full shadow-lg flex items-center justify-center">
             <Icon name={isSidebarOpen ? 'times' : 'bars'} />
           </button>
          
-          <aside className={`fixed md:relative top-0 left-0 h-full w-full md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col transition-transform duration-300 z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+          <aside className={`fixed md:relative top-0 left-0 h-full w-full max-w-sm md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col transition-transform duration-300 z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
              <div className="flex items-center gap-3 mb-6 pt-10 md:pt-0">
                 <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
                     <Icon name="brain" className="text-pink-600 text-xl" />
@@ -670,10 +680,10 @@ Solicitação do usuário: "${refinePrompt}"
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left">
                     <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">ETPs Salvos</h3>
-                    <Icon name={openSidebarSections.etps ? 'chevron-up' : 'chevron-down'} className="text-slate-400" />
+                    <Icon name={openSidebarSections.etps ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
                   </button>
-                  {openSidebarSections.etps && (
-                    <div className="mt-3 space-y-2">
+                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.etps ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-2">
                       {savedETPs.length > 0 ? (
                         <ul className="space-y-2">
                           {savedETPs.map(etp => (
@@ -705,17 +715,17 @@ Solicitação do usuário: "${refinePrompt}"
                         </ul>
                       ) : <p className="text-sm text-slate-400 italic px-2">Nenhum ETP salvo.</p>}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Accordion Section: TRs */}
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('trs')} className="w-full flex justify-between items-center text-left">
                     <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">TRs Salvos</h3>
-                    <Icon name={openSidebarSections.trs ? 'chevron-up' : 'chevron-down'} className="text-slate-400" />
+                    <Icon name={openSidebarSections.trs ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
                   </button>
-                   {openSidebarSections.trs && (
-                    <div className="mt-3 space-y-2">
+                   <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.trs ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-2">
                       {savedTRs.length > 0 ? (
                         <ul className="space-y-2">
                           {savedTRs.map(tr => (
@@ -747,17 +757,17 @@ Solicitação do usuário: "${refinePrompt}"
                         </ul>
                       ) : <p className="text-sm text-slate-400 italic px-2">Nenhum TR salvo.</p>}
                     </div>
-                   )}
+                   </div>
                 </div>
 
                 {/* Accordion Section: RAG */}
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('rag')} className="w-full flex justify-between items-center text-left">
                     <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Documentos de Apoio (RAG)</h3>
-                    <Icon name={openSidebarSections.rag ? 'chevron-up' : 'chevron-down'} className="text-slate-400" />
+                    <Icon name={openSidebarSections.rag ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
                   </button>
-                  {openSidebarSections.rag && (
-                    <div className="mt-3 space-y-2">
+                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.rag ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-2">
                       {processingFiles.length > 0 && (
                         <div className="mb-3 p-2 bg-slate-100 rounded-lg">
                           <h4 className="text-xs font-bold text-slate-600 mb-2">A processar ficheiros...</h4>
@@ -800,7 +810,7 @@ Solicitação do usuário: "${refinePrompt}"
                           <input type="file" className="hidden" multiple onChange={handleFileUpload} accept=".pdf,.docx,.txt" />
                       </label>
                     </div>
-                  )}
+                  </div>
                 </div>
             </div>
           </aside>

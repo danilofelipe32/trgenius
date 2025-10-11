@@ -13,20 +13,19 @@ export const exportDocumentToPDF = (doc: SavedDocument, sections: Section[]) => 
     let yPos = pageMargin;
 
     const addText = (text: string, options: { size: number; isBold?: boolean; spacing?: number; x?: number }) => {
-        const textYPos = yPos + (options.size * 0.7);
-        if (textYPos > pageHeight - pageMargin) {
-            pdf.addPage();
-            yPos = pageMargin;
-        }
-
         pdf.setFontSize(options.size);
         pdf.setFont(undefined, options.isBold ? 'bold' : 'normal');
 
         const splitText = pdf.splitTextToSize(text, contentWidth);
-        pdf.text(splitText, options.x || pageMargin, yPos);
+        const textBlockHeight = pdf.getTextDimensions(splitText).h;
 
-        const textHeight = (splitText.length * options.size) * 0.7;
-        yPos += textHeight + (options.spacing || 0);
+        if (yPos + textBlockHeight > pageHeight - pageMargin) {
+            pdf.addPage();
+            yPos = pageMargin;
+        }
+
+        pdf.text(splitText, options.x || pageMargin, yPos);
+        yPos += textBlockHeight + (options.spacing || 0);
     };
     
     addText(doc.name, { size: 18, isBold: true, spacing: 5 });
