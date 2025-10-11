@@ -561,6 +561,7 @@ const App: React.FC = () => {
   };
   
   const handleToggleFileSelection = (index: number) => {
+    if (uploadedFiles[index]?.isCore) return; // Prevent toggling core files
     const updatedFiles = uploadedFiles.map((file, i) =>
       i === index ? { ...file, selected: !file.selected } : file
     );
@@ -980,8 +981,14 @@ Solicitação do usuário: "${refinePrompt}"
                       )}
                       {uploadedFiles.map((file, index) => (
                         <div key={index} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 truncate">
-                            <input type="checkbox" checked={file.selected} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-4 w-4 text-blue-600 rounded" />
+                          <label className={`flex items-center gap-2 text-sm font-medium text-slate-700 truncate ${file.isCore ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                            <input 
+                                type="checkbox" 
+                                checked={file.selected} 
+                                onChange={() => handleToggleFileSelection(index)} 
+                                disabled={file.isCore}
+                                className="form-checkbox h-4 w-4 text-blue-600 rounded disabled:opacity-70 disabled:cursor-not-allowed" 
+                            />
                             <span className="truncate">{file.name}</span>
                             {file.isCore && <Icon name="lock" className="text-slate-400 text-xs" title="Base de Conhecimento Principal" />}
                           </label>
