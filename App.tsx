@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
-import { processUploadedFiles } from './services/ragService';
+import { processUploadedFiles, chunkText } from './services/ragService';
 import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
 
@@ -163,12 +163,39 @@ const App: React.FC = () => {
 
   // --- Effects ---
   useEffect(() => {
-    // Load all data from storage on initial render
-    setSavedETPs(storage.getSavedETPs());
-    setSavedTRs(storage.getSavedTRs());
-    setUploadedFiles(storage.getStoredFiles());
-    setEtpSectionsContent(storage.loadFormState('etpFormState') as Record<string, string> || {});
-    setTrSectionsContent(storage.loadFormState('trFormState') as Record<string, string> || {});
+    const loadInitialData = async () => {
+        setSavedETPs(storage.getSavedETPs());
+        setSavedTRs(storage.getSavedTRs());
+        setEtpSectionsContent(storage.loadFormState('etpFormState') as Record<string, string> || {});
+        setTrSectionsContent(storage.loadFormState('trFormState') as Record<string, string> || {});
+        
+        const userFiles = storage.getStoredFiles();
+
+        try {
+            const response = await fetch('./lei14133.json');
+            if (!response.ok) throw new Error('Falha ao carregar a base de conhecimento.');
+
+            const lawData: { page: number; content: string }[] = await response.json();
+            const fullText = lawData.map(item => item.content).join('\n\n');
+            const chunks = chunkText(fullText);
+
+            const lawFile: UploadedFile = {
+                name: 'Lei 14.133/21 (Base de Conhecimento)',
+                chunks,
+                selected: true,
+                isCore: true
+            };
+            
+            const existingUserFiles = userFiles.filter(f => !f.isCore);
+            setUploadedFiles([lawFile, ...existingUserFiles]);
+
+        } catch (error) {
+            console.error("Erro ao carregar a base de conhecimento:", error);
+            setUploadedFiles(userFiles);
+        }
+    };
+
+    loadInitialData();
 
     const handleResize = () => {
         if (window.innerWidth >= 768) {
@@ -399,7 +426,7 @@ const App: React.FC = () => {
     if(result.newFiles.length > 0) {
       const updatedFiles = [...uploadedFiles, ...result.newFiles];
       setUploadedFiles(updatedFiles);
-      storage.saveStoredFiles(updatedFiles);
+      storage.saveStoredFiles(updatedFiles.filter(f => !f.isCore));
     }
     event.target.value = ''; // Reset input
   };
@@ -409,13 +436,14 @@ const App: React.FC = () => {
       i === index ? { ...file, selected: !file.selected } : file
     );
     setUploadedFiles(updatedFiles);
-    storage.saveStoredFiles(updatedFiles);
+    storage.saveStoredFiles(updatedFiles.filter(f => !f.isCore));
   };
 
   const handleDeleteFile = (index: number) => {
+      if(uploadedFiles[index]?.isCore) return;
       const updatedFiles = uploadedFiles.filter((_, i) => i !== index);
       setUploadedFiles(updatedFiles);
-      storage.saveStoredFiles(updatedFiles);
+      storage.saveStoredFiles(updatedFiles.filter(f => !f.isCore));
   };
 
   const handleLoadEtpForTr = (etpId: string) => {
@@ -675,8 +703,11 @@ Solicitação do usuário: "${refinePrompt}"
                         <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 truncate">
                           <input type="checkbox" checked={file.selected} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-4 w-4 text-blue-600 rounded" />
                           <span className="truncate">{file.name}</span>
+                           {file.isCore && <Icon name="lock" className="text-slate-400 text-xs" title="Base de Conhecimento Principal" />}
                         </label>
-                        <button onClick={() => handleDeleteFile(index)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
+                        {!file.isCore && (
+                            <button onClick={() => handleDeleteFile(index)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
+                        )}
                       </div>
                     ))}
                   </div>

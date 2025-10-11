@@ -4,7 +4,7 @@ import { UploadedFile } from '../types';
 declare const pdfjsLib: any;
 declare const mammoth: any;
 
-const chunkText = (text: string): string[] => {
+export const chunkText = (text: string): string[] => {
   const normalizedText = text.replace(/\s\s+/g, ' ').trim();
   
   const articles = normalizedText.split(/(Art\.\s\d+º?\.?)/).slice(1);

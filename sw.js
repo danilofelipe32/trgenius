@@ -5,6 +5,7 @@ const urlsToCache = [
   '/index.tsx',
   '/App.tsx',
   '/manifest.json',
+  '/lei14133.json',
   '/icons/icon192.png',
   '/icons/icon512.png',
   'https://cdn.tailwindcss.com',

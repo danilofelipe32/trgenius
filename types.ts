@@ -29,6 +29,7 @@ export interface UploadedFile {
   name: string;
   chunks: string[];
   selected: boolean;
+  isCore?: boolean;
 }
 
 export interface PreviewContext {
