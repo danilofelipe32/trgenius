@@ -680,7 +680,7 @@ Solicitação do usuário: "${refinePrompt}"
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={closeEditModal} className="bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors">
+              <button onClick={closeEditModal} className="bg-transparent border border-slate-400 text-slate-600 font-bold py-2 px-4 rounded-lg hover:bg-slate-100 transition-colors">
                 Cancelar
               </button>
               <button onClick={handleSaveChanges} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
