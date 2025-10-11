@@ -1,0 +1,5 @@
+{
+  "name": "TR Genius PWA",
+  "description": "An intelligent assistant for creating Preliminary Technical Studies (ETP) and Terms of Reference (TR), fully compliant with the new Brazilian Bidding and Contracts Law (Lei 14.133/21). This PWA provides AI-powered content generation, risk analysis, and compliance checking to streamline public procurement documentation.",
+  "requestFramePermissions": []
+}
