@@ -514,7 +514,10 @@ const App: React.FC = () => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    const filesToProcess = Array.from(files).map(file => ({
+    // FIX: Explicitly type `fileList` as `File[]` to resolve type inference issues with `Array.from(FileList)`.
+    const fileList: File[] = Array.from(files);
+
+    const filesToProcess = fileList.map(file => ({
       name: file.name,
       status: 'processing' as const,
       message: ''
@@ -524,7 +527,7 @@ const App: React.FC = () => {
     const successfullyProcessed: UploadedFile[] = [];
     const currentFileNames = uploadedFiles.map(f => f.name);
 
-    for (const file of Array.from(files)) {
+    for (const file of fileList) {
       try {
         const processedFile = await processSingleUploadedFile(file, [
           ...currentFileNames, 
@@ -585,8 +588,10 @@ const App: React.FC = () => {
     const files = event.target.files;
     if (!files) return;
 
+    // FIX: Explicitly type `fileList` as `File[]` to resolve type inference issues with `Array.from(FileList)`.
+    const fileList: File[] = Array.from(files);
     const newAttachments: Attachment[] = [];
-    for (const file of Array.from(files)) {
+    for (const file of fileList) {
         if (etpAttachments.some(att => att.name === file.name)) {
             setMessage({ title: 'Aviso', text: `O ficheiro "${file.name}" já foi anexado.` });
             continue;
