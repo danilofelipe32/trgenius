@@ -136,6 +136,7 @@ const App: React.FC = () => {
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
+  const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -754,6 +755,16 @@ Solicitação do usuário: "${refinePrompt}"
   const toggleSidebarSection = (section: 'etps' | 'trs' | 'rag') => {
     setOpenSidebarSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
+  
+  const handleCreateNewDocument = (docType: DocumentType) => {
+    setIsNewDocModalOpen(false);
+    switchView(docType);
+    handleClearForm(docType)();
+    setMessage({
+        title: 'Novo Documento',
+        text: `Um novo formulário para ${docType.toUpperCase()} foi iniciado.`
+    });
+  };
 
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
@@ -1196,6 +1207,41 @@ Solicitação do usuário: "${refinePrompt}"
         )}
     </Modal>
 
+    <Modal isOpen={isNewDocModalOpen} onClose={() => setIsNewDocModalOpen(false)} title="Criar Novo Documento">
+      <div className="space-y-4">
+        <p className="text-slate-600">Qual tipo de documento você gostaria de criar? O formulário atual será limpo.</p>
+        <div className="flex flex-col space-y-3">
+            <button 
+                onClick={() => handleCreateNewDocument('etp')}
+                className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center"
+            >
+                <Icon name="file-alt" className="text-blue-500 text-2xl mr-4" />
+                <div>
+                    <p className="font-bold text-blue-800">Estudo Técnico Preliminar (ETP)</p>
+                    <p className="text-sm text-blue-600">Para planear e fundamentar a sua contratação.</p>
+                </div>
+            </button>
+            <button 
+                onClick={() => handleCreateNewDocument('tr')}
+                className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center"
+            >
+                <Icon name="gavel" className="text-purple-500 text-2xl mr-4" />
+                <div>
+                    <p className="font-bold text-purple-800">Termo de Referência (TR)</p>
+                    <p className="text-sm text-purple-600">Para detalhar o objeto e as regras da licitação.</p>
+                </div>
+            </button>
+        </div>
+      </div>
+    </Modal>
+
+    <button
+      onClick={() => setIsNewDocModalOpen(true)}
+      className="fixed bottom-8 right-8 bg-pink-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-3xl hover:bg-pink-700 transition-transform transform hover:scale-110 z-40"
+      title="Criar Novo Documento"
+    >
+      <Icon name="plus" />
+    </button>
     </div>
   );
 };
