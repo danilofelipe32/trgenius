@@ -38,7 +38,7 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
               className="px-3 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md hover:bg-green-200 transition-colors"
               title="Editar e Refinar"
             >
-              <Icon name="pencil-alt" className="mr-1" /> Editar
+              <Icon name="pencil-alt" className="mr-1" /> Editar / Refinar
             </button>
           )}
           {hasRiskAnalysis && onAnalyze && (
