@@ -3,6 +3,7 @@ import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, Prev
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
 import { processUploadedFiles } from './services/ragService';
+import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
 
 // --- Reusable Section Component ---
@@ -74,10 +75,11 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   maxWidth?: string;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidth = 'max-w-xl' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-xl' }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -91,6 +93,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
         <div className="p-6 overflow-y-auto">
           {children}
         </div>
+        {footer && (
+          <div className="p-5 border-t border-gray-200">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -515,6 +522,21 @@ Solicitação do usuário: "${refinePrompt}"
     }
   };
 
+  const handleExportToPDF = () => {
+    if (!previewContext.type || previewContext.id === null) return;
+
+    const { type, id } = previewContext;
+    const docs = type === 'etp' ? savedETPs : savedTRs;
+    const docToExport = docs.find(d => d.id === id);
+
+    if (docToExport) {
+        const allSections = type === 'etp' ? etpSections : trSections;
+        exportDocumentToPDF(docToExport, allSections);
+    } else {
+        setMessage({ title: 'Erro', text: 'Não foi possível encontrar o documento para exportar.' });
+    }
+  };
+
   const renderPreviewContent = () => {
     if (!previewContext.type || previewContext.id === null) return null;
     const { type, id } = previewContext;
@@ -762,7 +784,22 @@ Solicitação do usuário: "${refinePrompt}"
         </div>
       </Modal>
 
-      <Modal isOpen={isPreviewModalOpen} onClose={() => setIsPreviewModalOpen(false)} title="Pré-visualização do Documento" maxWidth="max-w-3xl">
+      <Modal 
+        isOpen={isPreviewModalOpen} 
+        onClose={() => setIsPreviewModalOpen(false)} 
+        title="Pré-visualização do Documento" 
+        maxWidth="max-w-3xl"
+        footer={
+          <div className="flex justify-end">
+            <button
+              onClick={handleExportToPDF}
+              className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Icon name="file-pdf" className="mr-2" /> Exportar para PDF
+            </button>
+          </div>
+        }
+      >
           {renderPreviewContent()}
       </Modal>
       

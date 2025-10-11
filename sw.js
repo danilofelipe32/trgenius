@@ -1,4 +1,3 @@
-
 const CACHE_NAME = 'tr-genius-pwa-v1';
 const urlsToCache = [
   '/',
@@ -15,6 +14,7 @@ const urlsToCache = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',
   'https://unpkg.com/mammoth@1.5.1/mammoth.browser.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap'
 ];
 
