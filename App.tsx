@@ -126,6 +126,10 @@ const App: React.FC = () => {
   const [editingContent, setEditingContent] = useState<{ docType: DocumentType; sectionId: string; title: string; text: string } | null>(null);
   const [refinePrompt, setRefinePrompt] = useState('');
   const [isRefining, setIsRefining] = useState(false);
+
+  // Inline rename state
+  const [editingDoc, setEditingDoc] = useState<{ type: DocumentType; id: number } | null>(null);
+  const [editingDocName, setEditingDocName] = useState('');
   
   // Sections definitions
   const etpSections: SectionType[] = [
@@ -345,6 +349,38 @@ const App: React.FC = () => {
     }
   };
 
+  const handleStartEditing = (type: DocumentType, doc: SavedDocument) => {
+    setEditingDoc({ type, id: doc.id });
+    setEditingDocName(doc.name);
+  };
+
+  const handleRenameDocument = () => {
+    if (!editingDoc || !editingDocName.trim()) {
+        setEditingDoc(null); // Cancel edit if name is empty
+        return;
+    }
+
+    const { type, id } = editingDoc;
+    const newName = editingDocName.trim();
+
+    if (type === 'etp') {
+        const updated = savedETPs.map(doc =>
+            doc.id === id ? { ...doc, name: newName } : doc
+        );
+        setSavedETPs(updated);
+        storage.saveETPs(updated);
+    } else { // type === 'tr'
+        const updated = savedTRs.map(doc =>
+            doc.id === id ? { ...doc, name: newName } : doc
+        );
+        setSavedTRs(updated);
+        storage.saveTRs(updated);
+    }
+
+    setEditingDoc(null);
+    setEditingDocName('');
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
@@ -534,8 +570,24 @@ Solicitação do usuário: "${refinePrompt}"
                     <ul className="space-y-2">
                       {savedETPs.map(etp => (
                         <li key={etp.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                          <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
+                              <input
+                                  type="text"
+                                  value={editingDocName}
+                                  onChange={(e) => setEditingDocName(e.target.value)}
+                                  onBlur={handleRenameDocument}
+                                  onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleRenameDocument();
+                                      if (e.key === 'Escape') setEditingDoc(null);
+                                  }}
+                                  className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
+                                  autoFocus
+                              />
+                          ) : (
+                              <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
+                          )}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
                             <button onClick={() => handleLoadDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
                             <button onClick={() => { setPreviewContext({ type: 'etp', id: etp.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
                             <button onClick={() => handleDeleteDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
@@ -552,8 +604,24 @@ Solicitação do usuário: "${refinePrompt}"
                     <ul className="space-y-2">
                       {savedTRs.map(tr => (
                         <li key={tr.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                          <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                           {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
+                              <input
+                                  type="text"
+                                  value={editingDocName}
+                                  onChange={(e) => setEditingDocName(e.target.value)}
+                                  onBlur={handleRenameDocument}
+                                  onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleRenameDocument();
+                                      if (e.key === 'Escape') setEditingDoc(null);
+                                  }}
+                                  className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
+                                  autoFocus
+                              />
+                          ) : (
+                              <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
+                          )}
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
                             <button onClick={() => handleLoadDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
                             <button onClick={() => { setPreviewContext({ type: 'tr', id: tr.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
                             <button onClick={() => handleDeleteDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
