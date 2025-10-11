@@ -1,16 +1,21 @@
-const CACHE_NAME = 'tr-genius-pwa-v1';
+const CACHE_NAME = 'tr-genius-pwa-v2';
 const urlsToCache = [
   '/',
   '/index.html',
   '/index.tsx',
   '/App.tsx',
+  '/components/Icon.tsx',
+  '/components/Login.tsx',
+  '/services/storageService.ts',
+  '/services/geminiService.ts',
+  '/services/ragService.ts',
+  '/services/exportService.ts',
+  '/types.ts',
   '/manifest.json',
   '/lei14133.json',
   '/icons/icon192.png',
   '/icons/icon512.png',
   'https://cdn.tailwindcss.com',
-  'https://unpkg.com/react@18/umd/react.development.js',
-  'https://unpkg.com/react-dom@18/umd/react-dom.development.js',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js',
@@ -33,13 +38,39 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
+        // Cache hit - return response
         if (response) {
           return response;
         }
-        return fetch(event.request);
+
+        // Clone the request because it's a stream and can only be consumed once.
+        const fetchRequest = event.request.clone();
+
+        return fetch(fetchRequest).then(
+          (response) => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
+              return response;
+            }
+
+            // Clone the response because it's also a stream.
+            const responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                // We don't cache chrome-extension URLs
+                if (!event.request.url.startsWith('chrome-extension://')) {
+                  cache.put(event.request, responseToCache);
+                }
+              });
+
+            return response;
+          }
+        );
       })
   );
 });
+
 
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];

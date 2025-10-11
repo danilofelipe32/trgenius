@@ -1,9 +1,10 @@
-
 {
   "name": "TR Genius PWA",
   "short_name": "TR Genius",
   "description": "AI assistant for Brazilian public bidding documents.",
   "start_url": ".",
+  "scope": ".",
+  "id": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#3b82f6",
@@ -12,12 +13,14 @@
     {
       "src": "icons/icon192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any"
     },
     {
       "src": "icons/icon512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ]
 }
