@@ -18,13 +18,14 @@ interface SectionProps {
   hasRiskAnalysis?: boolean;
   onEdit?: () => void;
   isLoading?: boolean;
+  hasError?: boolean;
 }
 
-const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChange, onGenerate, hasGen, onAnalyze, hasRiskAnalysis, onEdit, isLoading }) => {
+const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChange, onGenerate, hasGen, onAnalyze, hasRiskAnalysis, onEdit, isLoading, hasError }) => {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
-        <label htmlFor={id} className="block text-lg font-semibold text-slate-700">{title}</label>
+        <label htmlFor={id} className={`block text-lg font-semibold ${hasError ? 'text-red-600' : 'text-slate-700'}`}>{title}</label>
         <div className="flex items-center gap-2">
            {value && value.trim().length > 0 && onEdit && (
              <button
@@ -60,7 +61,7 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
         value={value || ''}
         onChange={(e) => onChange(id, e.target.value)}
         placeholder={isLoading ? 'A IA está a gerar o conteúdo...' : placeholder}
-        className="w-full h-40 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+        className={`w-full h-40 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${hasError ? 'border-red-500 ring-red-200' : 'border-slate-200 focus:ring-blue-500'}`}
         disabled={isLoading}
       />
     </div>
@@ -118,6 +119,7 @@ const App: React.FC = () => {
   const [message, setMessage] = useState<{ title: string; text: string } | null>(null);
   const [analysisContent, setAnalysisContent] = useState<{ title: string; content: string | null }>({ title: '', content: null });
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -168,6 +170,14 @@ const App: React.FC = () => {
 
   // --- Handlers ---
   const handleSectionChange = (docType: DocumentType, id: string, value: string) => {
+    if (validationErrors.has(id)) {
+      setValidationErrors(prev => {
+        const newErrors = new Set(prev);
+        newErrors.delete(id);
+        return newErrors;
+      });
+    }
+
     const updateFn = docType === 'etp' ? setEtpSectionsContent : setTrSectionsContent;
     updateFn(prev => {
         const newState = { ...prev, [id]: value };
@@ -202,6 +212,7 @@ const App: React.FC = () => {
       const demandaText = currentSections['etp-input-demanda'] || '';
       if(!demandaText) {
         setMessage({ title: 'Aviso', text: "Por favor, preencha a seção '2. Demanda' primeiro, pois ela serve de base para as outras." });
+        setValidationErrors(new Set(['etp-input-demanda']));
         setLoadingSection(null);
         return;
       }
@@ -248,11 +259,42 @@ const App: React.FC = () => {
     }
   };
 
+  const validateForm = (docType: DocumentType, sections: Record<string, string>): string[] => {
+    const errors: string[] = [];
+    const errorFields = new Set<string>();
+
+    const requiredFields: { [key in DocumentType]?: { id: string; name: string }[] } = {
+        etp: [
+            { id: 'etp-input-demanda', name: '2. Demanda' },
+        ],
+        tr: [
+            { id: 'tr-input-objeto', name: '1. Objeto da Contratação' },
+        ],
+    };
+
+    const fieldsToValidate = requiredFields[docType] || [];
+
+    fieldsToValidate.forEach(field => {
+        if (!sections[field.id] || sections[field.id].trim() === '') {
+            errors.push(`O campo "${field.name}" é obrigatório.`);
+            errorFields.add(field.id);
+        }
+    });
+
+    setValidationErrors(errorFields);
+    return errors;
+  };
+
   const handleSaveDocument = (docType: DocumentType) => {
     const sections = docType === 'etp' ? etpSectionsContent : trSectionsContent;
-    if (Object.values(sections).every(val => !val || val.trim() === '')) {
-      setMessage({title: "Aviso", text: `Preencha pelo menos um campo para salvar o ${docType.toUpperCase()}.`});
-      return;
+    
+    const validationMessages = validateForm(docType, sections);
+    if (validationMessages.length > 0) {
+        setMessage({
+            title: "Campos Obrigatórios",
+            text: `Por favor, preencha os seguintes campos antes de salvar:\n- ${validationMessages.join('\n- ')}`
+        });
+        return;
     }
 
     const name = `${docType.toUpperCase()} ${new Date().toLocaleString('pt-BR').replace(/[/:,]/g, '_')}`;
@@ -462,6 +504,11 @@ Solicitação do usuário: "${refinePrompt}"
     );
   };
 
+  const switchView = (view: DocumentType) => {
+    setActiveView(view);
+    setValidationErrors(new Set());
+  };
+
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
        <div className="flex flex-col md:flex-row h-screen">
@@ -543,8 +590,8 @@ Solicitação do usuário: "${refinePrompt}"
              <header className="flex justify-between items-start mb-6">
                 <div>
                     <div className="flex gap-2 mb-4 border-b border-slate-200">
-                        <button onClick={() => setActiveView('etp')} className={`py-2 px-4 font-semibold text-lg transition-colors ${activeView === 'etp' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Gerador de ETP</button>
-                        <button onClick={() => setActiveView('tr')} className={`py-2 px-4 font-semibold text-lg transition-colors ${activeView === 'tr' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Gerador de TR</button>
+                        <button onClick={() => switchView('etp')} className={`py-2 px-4 font-semibold text-lg transition-colors ${activeView === 'etp' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Gerador de ETP</button>
+                        <button onClick={() => switchView('tr')} className={`py-2 px-4 font-semibold text-lg transition-colors ${activeView === 'tr' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-500'}`}>Gerador de TR</button>
                     </div>
                 </div>
                 <div className="flex gap-2">
@@ -565,6 +612,7 @@ Solicitação do usuário: "${refinePrompt}"
                         hasGen={section.hasGen}
                         isLoading={loadingSection === section.id}
                         onEdit={() => handleOpenEditModal('etp', section.id, section.title)}
+                        hasError={validationErrors.has(section.id)}
                     />
                 ))}
                 <div className="flex justify-end mt-6">
@@ -610,6 +658,7 @@ Solicitação do usuário: "${refinePrompt}"
                         onAnalyze={() => handleRiskAnalysis(section.id, section.title)}
                         hasRiskAnalysis={section.hasRiskAnalysis}
                         onEdit={() => handleOpenEditModal('tr', section.id, section.title)}
+                        hasError={validationErrors.has(section.id)}
                     />
                 ))}
                 <div className="flex justify-end mt-6">
@@ -639,7 +688,7 @@ Solicitação do usuário: "${refinePrompt}"
       </Modal>
 
       <Modal isOpen={!!message} onClose={() => setMessage(null)} title={message?.title || ''}>
-        <p>{message?.text}</p>
+        <p className="whitespace-pre-wrap">{message?.text}</p>
         <div className="flex justify-end mt-4">
             <button onClick={() => setMessage(null)} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">OK</button>
         </div>
