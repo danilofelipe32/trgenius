@@ -11,6 +11,12 @@ import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
 import { etpSections, trSections } from './config/sections';
 
+const priorityLabels: Record<Priority, string> = {
+  high: 'Alta',
+  medium: 'Média',
+  low: 'Baixa',
+};
+
 // --- Reusable Section Component ---
 interface SectionProps {
   id: string;
@@ -137,9 +143,9 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer,
 
 const PriorityIndicator: React.FC<{ priority?: Priority }> = ({ priority }) => {
     const priorityStyles: Record<Priority, { color: string; label: string }> = {
-        low: { color: 'bg-green-500', label: 'Baixa Prioridade' },
-        medium: { color: 'bg-yellow-500', label: 'Média Prioridade' },
-        high: { color: 'bg-red-500', label: 'Alta Prioridade' },
+        low: { color: 'bg-green-500', label: 'Prioridade Baixa' },
+        medium: { color: 'bg-yellow-500', label: 'Prioridade Média' },
+        high: { color: 'bg-red-500', label: 'Prioridade Alta' },
     };
 
     if (!priority) return <div title="Prioridade não definida" className="w-3 h-3 rounded-full bg-slate-300 flex-shrink-0"></div>;
@@ -1093,9 +1099,9 @@ Solicitação do usuário: "${refinePrompt}"
                                               <button
                                                   key={p}
                                                   onClick={() => setEditingDoc(prev => prev ? { ...prev, priority: p } : null)}
-                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 capitalize ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
+                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
                                               >
-                                                  {p === 'high' ? 'Alta' : p}
+                                                  {priorityLabels[p]}
                                               </button>
                                           ))}
                                       </div>
@@ -1152,9 +1158,9 @@ Solicitação do usuário: "${refinePrompt}"
                                               <button
                                                   key={p}
                                                   onClick={() => setEditingDoc(prev => prev ? { ...prev, priority: p } : null)}
-                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 capitalize ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
+                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
                                               >
-                                                  {p === 'high' ? 'Alta' : p}
+                                                  {priorityLabels[p]}
                                               </button>
                                           ))}
                                       </div>
