@@ -114,8 +114,24 @@ export const HistoryViewer: React.FC<HistoryViewerProps> = ({ document, allSecti
     return (
         <div className="flex flex-col md:flex-row gap-6">
             <style>{`
-                ins { background-color: #dcfce7; color: #166534; text-decoration: none; }
-                del { background-color: #fee2e2; color: #991b1b; text-decoration: line-through; }
+                ins { 
+                  background-color: #dcfce7; /* green-100 */
+                  color: #166534; /* green-800 */
+                  text-decoration: none; 
+                  padding: 1px 3px;
+                  border-radius: 4px;
+                  box-shadow: 0 0 0 1px #86efac; /* green-300 */
+                }
+                del { 
+                  background-color: #fee2e2; /* red-100 */
+                  color: #991b1b; /* red-800 */
+                  text-decoration: line-through;
+                  text-decoration-color: #ef4444; /* red-500 */
+                  text-decoration-thickness: 2px;
+                  padding: 1px 3px;
+                  border-radius: 4px;
+                  box-shadow: 0 0 0 1px #fca5a5; /* red-300 */
+                }
             `}</style>
             
             <aside className="w-full md:w-1/4 p-4 bg-slate-50 rounded-lg border">
@@ -140,28 +156,36 @@ export const HistoryViewer: React.FC<HistoryViewerProps> = ({ document, allSecti
                  )}
             </aside>
 
-            <main className="w-full md:w-3/4 max-h-[70vh] overflow-y-auto pr-2">
+            <main className="w-full md:w-3/4 max-h-[70vh] overflow-y-auto pr-2 space-y-4">
                 {allSectionIds.map(sectionId => {
                     const diff = diffs[sectionId];
                     const sectionInfo = allSections.find(s => s.id === sectionId);
                     if (!diff || !sectionInfo) return null;
 
                     return (
-                        <div key={sectionId} className="mb-6">
-                            <h4 className="text-xl font-bold text-slate-800 mb-3 p-2 bg-slate-100 rounded-md sticky top-0">{sectionInfo.title}</h4>
+                        <div key={sectionId} className="bg-white border rounded-lg shadow-sm overflow-hidden">
+                            <h4 className={`flex items-center justify-between text-lg font-bold mb-0 p-3 sticky top-0 z-10 ${!diff.same ? 'bg-yellow-100 text-yellow-900 border-b border-yellow-200' : 'bg-slate-100 text-slate-800 border-b border-slate-200'}`}>
+                                <span>{sectionInfo.title}</span>
+                                {!diff.same && (
+                                    <span className="flex items-center gap-2 text-xs font-semibold bg-yellow-500 text-white px-2 py-1 rounded-full">
+                                        <Icon name="exchange-alt" />
+                                        MODIFICADO
+                                    </span>
+                                )}
+                            </h4>
                             {diff.same ? (
-                                <div className="p-4 bg-white border rounded-lg text-slate-500 italic">
+                                <div className="p-4 text-slate-500 italic">
                                     Sem alterações nesta seção.
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-white border rounded-lg p-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-slate-200">
+                                    <div className="bg-white p-4">
                                         <div 
                                             className="whitespace-pre-wrap text-sm leading-relaxed"
                                             dangerouslySetInnerHTML={{ __html: diff.html1 || '<i class="text-slate-400">Vazio</i>' }} 
                                         />
                                     </div>
-                                    <div className="bg-white border rounded-lg p-4">
+                                    <div className="bg-white p-4">
                                         <div 
                                             className="whitespace-pre-wrap text-sm leading-relaxed"
                                             dangerouslySetInnerHTML={{ __html: diff.html2 || '<i class="text-slate-400">Vazio</i>' }} 
