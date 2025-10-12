@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tr-genius-pwa-v10';
+const CACHE_NAME = 'tr-genius-pwa-v11';
 const urlsToCache = [
   // Core App Shell
   '.',
@@ -6,17 +6,7 @@ const urlsToCache = [
   './index.html',
   './manifest.json',
   
-  // Local Scripts & Data
-  './index.tsx',
-  './App.tsx',
-  './components/Icon.tsx',
-  './components/Login.tsx',
-  './components/AttachmentManager.tsx',
-  './services/storageService.ts',
-  './services/geminiService.ts',
-  './services/ragService.ts',
-  './services/exportService.ts',
-  './types.ts',
+  // Local Data (assets that are copied as-is)
   './lei14133.json',
 
   // Icons and Images
@@ -38,11 +28,11 @@ const urlsToCache = [
   'https://unpkg.com/mammoth@1.5.1/mammoth.browser.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   
-  // External Modules (from Import Map)
-  'https://aistudiocdn.com/react@19.2.0/es.js',
-  'https://aistudiocdn.com/react@19.2.0/es/jsx-runtime.js',
-  'https://aistudiocdn.com/react-dom@19.2.0/es/client.js',
-  'https://aistudiocdn.com/@google/genai@1.24.0/es/index.js',
+  // External Modules (from Import Map) - These are loaded by the browser, not the SW directly
+  // 'https://aistudiocdn.com/react@19.2.0/es.js',
+  // 'https://aistudiocdn.com/react@19.2.0/es/jsx-runtime.js',
+  // 'https://aistudiocdn.com/react-dom@19.2.0/es/client.js',
+  // 'https://aistudiocdn.com/@google/genai@1.24.0/es/index.js',
 
   // External Fonts & Icons Assets
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
@@ -103,6 +93,8 @@ self.addEventListener('fetch', (event) => {
           cache.put(request, networkResponse.clone());
         }
         return networkResponse;
+      }).catch(err => {
+        console.warn(`Failed to fetch ${request.url} from network`, err);
       });
 
       // Return the cached response if available, otherwise wait for the network response.
