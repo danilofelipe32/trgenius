@@ -1551,7 +1551,7 @@ Solicitação do usuário: "${refinePrompt}"
     {installPrompt && !isInstallBannerVisible && (
         <button
             onClick={handleInstallClick}
-            className="fixed bottom-28 right-8 bg-green-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40"
+            className="fixed bottom-44 right-8 bg-green-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40"
             title="Instalar App"
           >
             <Icon name="download" />
@@ -1559,7 +1559,7 @@ Solicitação do usuário: "${refinePrompt}"
     )}
     <button
       onClick={() => setIsNewDocModalOpen(true)}
-      className="fixed bottom-24 right-8 bg-pink-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-3xl hover:bg-pink-700 transition-transform transform hover:scale-110 z-40"
+      className="fixed bottom-28 right-8 bg-pink-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-pink-700 transition-transform transform hover:scale-110 z-40"
       title="Criar Novo Documento"
     >
       <Icon name="plus" />
