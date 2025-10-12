@@ -30,6 +30,16 @@ interface SectionProps {
 }
 
 const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChange, onGenerate, hasGen, onAnalyze, hasRiskAnalysis, onEdit, isLoading, hasError, tooltip }) => {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!value || !navigator.clipboard) return;
+    navigator.clipboard.writeText(value).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
+  };
+  
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
@@ -38,7 +48,15 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
             {tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={tooltip} />}
         </div>
         <div className="flex items-center gap-2">
-           {/* FIX: Safely call .trim() by ensuring value is a string. */}
+           {value && String(value || '').trim().length > 0 && (
+             <button
+              onClick={handleCopy}
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${isCopied ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              title={isCopied ? 'Copiado para a área de transferência!' : 'Copiar Conteúdo'}
+            >
+              <Icon name={isCopied ? 'check' : 'copy'} className="mr-1" /> {isCopied ? 'Copiado!' : 'Copiar'}
+            </button>
+           )}
            {value && String(value || '').trim().length > 0 && onEdit && (
              <button
               onClick={onEdit}
