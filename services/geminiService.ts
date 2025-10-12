@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Chave de API inserida diretamente para fins de teste, conforme solicitado.
-const ai = new GoogleGenAI({ apiKey: "AIzaSyB1SGptDVNzOh888rzlNSkXCiT5P2goNo0" });
+// FIX: Initialize GoogleGenAI with the API key from environment variables as per guidelines.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function callGemini(prompt: string): Promise<string> {
   try {

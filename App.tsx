@@ -225,7 +225,7 @@ const App: React.FC = () => {
             const chunks = chunkText(fullText);
 
             const lawFile: UploadedFile = {
-                name: 'Lei 14.133/21 (Base de Conhecimento)',
+                name: 'lei14133.json',
                 chunks,
                 selected: true,
                 isCore: true
@@ -909,6 +909,7 @@ Solicitação do usuário: "${refinePrompt}"
                         `===================================================\n\n` +
                         historyModalContent.historico.join('\n');
 
+    // FIX: Replaced undefined variable `text` with `historyText` to correctly create the Blob for export.
     const blob = new Blob([historyText], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -951,30 +952,9 @@ Solicitação do usuário: "${refinePrompt}"
             </p>
             
             <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
-                {/* Base de Conhecimento Section */}
                 <div className="py-2">
-                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Base de Conhecimento</h3>
-                  {uploadedFiles.map((file, index) => {
-                    if (!file.isCore) return null;
-                    return (
-                      <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 truncate">
-                                <input 
-                                    type="checkbox" 
-                                    className="h-5 w-5 rounded accent-blue-600 flex-shrink-0"
-                                    checked 
-                                    disabled 
-                                />
-                                <span className="font-medium text-slate-800 truncate">{file.name}</span>
-                            </div>
-                            <Icon name="lock" className="text-slate-400" title="Base de Conhecimento Principal (Sempre ativa)" />
-                        </div>
-                      </div>
-                    );
-                  })}
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Base de Conhecimento</h3>
                 </div>
-
                 {/* Accordion Section: ETPs */}
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left">
@@ -1093,11 +1073,30 @@ Solicitação do usuário: "${refinePrompt}"
                           </ul>
                         </div>
                       )}
-                      {uploadedFiles.filter(f => !f.isCore).length === 0 && processingFiles.length === 0 && (
+                      
+                      {uploadedFiles.length === 0 && processingFiles.length === 0 && (
                           <p className="text-sm text-slate-400 italic px-2">Nenhum ficheiro carregado.</p>
                       )}
+
                       {uploadedFiles.map((file, index) => {
-                          if (file.isCore) return null;
+                          if (file.isCore) {
+                            return (
+                                <div key={index} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-slate-800 truncate cursor-not-allowed">
+                                        <input
+                                            type="checkbox"
+                                            checked={true}
+                                            disabled={true}
+                                            className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                                        />
+                                        <span className="truncate">{file.name}</span>
+                                    </label>
+                                    <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
+                                        <Icon name="lock" className="text-slate-400" title="Base de Conhecimento Principal (Sempre ativa)" />
+                                    </div>
+                                </div>
+                            );
+                          }
                           return (
                             <div key={index} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
                                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 truncate cursor-pointer">
