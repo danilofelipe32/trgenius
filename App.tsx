@@ -40,46 +40,50 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
   
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
-      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+      <div className="flex justify-between items-center mb-4 flex-wrap gap-y-3">
         <div className="flex items-center gap-2">
             <label htmlFor={id} className={`block text-lg font-semibold ${hasError ? 'text-red-600' : 'text-slate-700'}`}>{title}</label>
             {tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={tooltip} />}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="w-full sm:w-auto flex items-stretch gap-2 flex-wrap">
            {value && String(value || '').trim().length > 0 && (
              <button
               onClick={handleCopy}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${isCopied ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold rounded-lg transition-colors min-w-[calc(50%-0.25rem)] sm:min-w-0 ${isCopied ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
               title={isCopied ? 'Copiado para a área de transferência!' : 'Copiar Conteúdo'}
             >
-              <Icon name={isCopied ? 'check' : 'copy'} className="mr-1" /> {isCopied ? 'Copiado!' : 'Copiar'}
+              <Icon name={isCopied ? 'check' : 'copy'} className="mr-2" /> 
+              <span>{isCopied ? 'Copiado!' : 'Copiar'}</span>
             </button>
            )}
            {value && String(value || '').trim().length > 0 && onEdit && (
              <button
               onClick={onEdit}
-              className="px-3 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md hover:bg-green-200 transition-colors"
+              className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors min-w-[calc(50%-0.25rem)] sm:min-w-0"
               title="Editar e Refinar"
             >
-              <Icon name="pencil-alt" className="mr-1" /> Editar / Refinar
+              <Icon name="pencil-alt" className="mr-2" />
+              <span>Editar/Refinar</span>
             </button>
           )}
           {hasRiskAnalysis && onAnalyze && (
             <button
               onClick={onAnalyze}
-              className="px-3 py-1 text-xs font-semibold text-purple-600 bg-purple-100 rounded-md hover:bg-purple-200 transition-colors"
+              className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors min-w-[calc(50%-0.25rem)] sm:min-w-0"
               title="Análise de Riscos"
             >
-              <Icon name="shield-alt" className="mr-1" /> Análise de Risco
+              <Icon name="shield-alt" className="mr-2" />
+              <span>Análise Risco</span>
             </button>
           )}
           {hasGen && (
             <button
               onClick={onGenerate}
               disabled={isLoading}
-              className="px-3 py-1 text-xs font-semibold text-blue-600 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[calc(50%-0.25rem)] sm:min-w-0"
             >
-              <Icon name="wand-magic-sparkles" className="mr-1" /> {isLoading ? 'A gerar...' : 'Gerar com IA'}
+              <Icon name="wand-magic-sparkles" className="mr-2" />
+              <span>{isLoading ? 'A gerar...' : 'Gerar com IA'}</span>
             </button>
           )}
         </div>
@@ -1265,12 +1269,12 @@ Solicitação do usuário: "${refinePrompt}"
                 </div>
                 <div className="flex-shrink-0 ml-4 flex items-center gap-2">
                     {isOnline ? (
-                        <div className="flex items-center gap-0.5 bg-green-100 text-green-800 text-xs font-semibold px-1.5 py-0.5 rounded-full" title="A ligação à Internet está ativa.">
+                        <div className="flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full" title="A ligação à Internet está ativa.">
                             <Icon name="wifi" />
                             <span>Online</span>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-0.5 bg-yellow-100 text-yellow-800 text-xs font-semibold px-1.5 py-0.5 rounded-full" title="Sem ligação à Internet. As funcionalidades online estão desativadas.">
+                        <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full" title="Sem ligação à Internet. As funcionalidades online estão desativadas.">
                             <Icon name="wifi-slash" />
                             <span>Offline</span>
                         </div>
