@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tr-genius-pwa-v6';
+const CACHE_NAME = 'tr-genius-pwa-v7';
 const urlsToCache = [
   // Core App Shell
   '.',
@@ -63,54 +63,61 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Use a network-first strategy for navigation requests (HTML pages)
-  if (event.request.mode === 'navigate') {
+  const { request } = event;
+
+  // Strategy 1: Network First for Navigation
+  // For HTML page requests, always try the network first to get the latest version.
+  // If the network fails, fall back to the cached app shell (index.html).
+  // This ensures the app can load offline while users get updates when connected.
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // If network is available, cache the response and return it
-          return caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, response.clone());
-            return response;
-          });
-        })
-        .catch(() => {
-          // If network fails, serve the cached index.html
-          return caches.match('./index.html');
-        })
+      (async () => {
+        try {
+          const networkResponse = await fetch(request);
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, networkResponse.clone());
+          return networkResponse;
+        } catch (error) {
+          console.log('Network request for navigation failed, serving cache fallback.', error);
+          const cache = await caches.open(CACHE_NAME);
+          // The fallback is the main entry point of the PWA.
+          return await cache.match('./index.html');
+        }
+      })()
     );
     return;
   }
 
-  // Use a stale-while-revalidate strategy for all other requests (assets).
-  // This provides a fast response from the cache while updating it in the background.
+  // Strategy 2: Stale-While-Revalidate for Static Assets
+  // For assets like JS, CSS, images, and fonts, serve from cache immediately for speed.
+  // Simultaneously, fetch an updated version from the network in the background
+  // and update the cache for the next visit.
   event.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          // If the network request is successful, update the cache.
-          if (networkResponse && networkResponse.status === 200 && !event.request.url.startsWith('chrome-extension://')) {
-             cache.put(event.request, networkResponse.clone());
-          }
-          return networkResponse;
-        }).catch(err => {
-            // If the network fails, we still have the cached response (if it exists).
-            console.warn(`Fetch failed for ${event.request.url}; returning cached response if available.`, err);
-            if (cachedResponse) {
-                return cachedResponse;
-            }
-            // If there's no cached response either, the error will propagate.
-            throw err;
-        });
-
-        // Return the cached response immediately if available (stale), 
-        // otherwise wait for the network response.
-        return cachedResponse || fetchPromise;
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cachedResponse = await cache.match(request);
+      
+      const fetchPromise = fetch(request).then(networkResponse => {
+        // Check for a valid response before caching
+        if (networkResponse && networkResponse.status === 200 && !request.url.startsWith('chrome-extension://')) {
+          cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      }).catch(err => {
+        // Network failed, but we might have a cached response.
+        // If not, the error will propagate.
+        console.warn(`Fetch failed for ${request.url}; returning cached response if available.`, err);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        throw err;
       });
-    })
+
+      // Return cached response if available (stale), otherwise wait for the network response.
+      return cachedResponse || fetchPromise;
+    })()
   );
 });
-
 
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
