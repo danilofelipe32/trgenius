@@ -499,28 +499,35 @@ const App: React.FC = () => {
     setEditingDocName(doc.name);
   };
 
+// FIX: Corrected a validation issue where `.trim()` could be called on a non-string value, causing a type error.
+// The logic now safely converts the editing name to a string before trimming.
   const handleRenameDocument = () => {
-    // FIX: Add a type check for editingDocName to resolve an 'unknown' type error before calling .trim().
-    if (!editingDoc || typeof editingDocName !== 'string' || !editingDocName.trim()) {
-        setEditingDoc(null); // Cancel edit if name is empty
-        return;
+    if (!editingDoc) {
+      setEditingDoc(null);
+      return;
+    }
+
+    const newName = String(editingDocName || '').trim();
+
+    if (!newName) {
+      setEditingDoc(null); // Cancel edit if name is empty
+      return;
     }
 
     const { type, id } = editingDoc;
-    const newName = editingDocName.trim();
 
     if (type === 'etp') {
-        const updated = savedETPs.map(doc =>
-            doc.id === id ? { ...doc, name: newName } : doc
-        );
-        setSavedETPs(updated);
-        storage.saveETPs(updated);
+      const updated = savedETPs.map(doc =>
+        doc.id === id ? { ...doc, name: newName } : doc
+      );
+      setSavedETPs(updated);
+      storage.saveETPs(updated);
     } else { // type === 'tr'
-        const updated = savedTRs.map(doc =>
-            doc.id === id ? { ...doc, name: newName } : doc
-        );
-        setSavedTRs(updated);
-        storage.saveTRs(updated);
+      const updated = savedTRs.map(doc =>
+        doc.id === id ? { ...doc, name: newName } : doc
+      );
+      setSavedTRs(updated);
+      storage.saveTRs(updated);
     }
 
     setEditingDoc(null);
@@ -621,8 +628,19 @@ const App: React.FC = () => {
     const ragContext = getRagContext();
     let primaryContext = '';
     
-    if (docType === 'tr' && loadedEtpForTr) {
-        primaryContext = `--- INÍCIO DO ETP DE CONTEXTO ---\n${loadedEtpForTr.content}\n--- FIM DO ETP DE CONTEXTO ---`;
+    if (docType === 'tr') {
+        let etpContext = '';
+        if (loadedEtpForTr) {
+            etpContext = `--- INÍCIO DO ETP DE CONTEXTO ---\n${loadedEtpForTr.content}\n--- FIM DO ETP DE CONTEXTO ---\n\n`;
+        }
+
+        const trOtherSectionsContext = Object.entries(currentSections)
+            .filter(([key, value]) => key !== sectionId && value && value.trim())
+            .map(([key, value]) => `Contexto da Seção do TR (${trSections.find(s => s.id === key)?.title}):\n${value.trim()}`)
+            .join('\n\n');
+        
+        primaryContext = `${etpContext}${trOtherSectionsContext}`;
+        
     } else if (docType === 'etp') {
         primaryContext = Object.entries(currentSections)
             .filter(([key, value]) => key !== sectionId && value)
