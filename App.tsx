@@ -141,6 +141,7 @@ const App: React.FC = () => {
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
   const [historyModalContent, setHistoryModalContent] = useState<SavedDocument | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<any>(null); // For PWA install prompt
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -246,6 +247,19 @@ const App: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [isAuthenticated]);
+  
+  // PWA Install Prompt
+  useEffect(() => {
+    const handler = (e: Event) => {
+        e.preventDefault();
+        setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+        window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
 
   // --- Auto-save Effects ---
   useEffect(() => {
@@ -696,8 +710,8 @@ Solicitação do usuário: "${refinePrompt}"
         setMessage({ title: 'Erro', text: 'Não foi possível encontrar o documento para exportar.' });
     }
   };
-
-  const handleClearForm = (docType: DocumentType) => () => {
+  
+  const handleClearForm = useCallback((docType: DocumentType) => () => {
     if (docType === 'etp') {
         setEtpSectionsContent({});
         setEtpAttachments([]);
@@ -710,7 +724,7 @@ Solicitação do usuário: "${refinePrompt}"
         storage.saveFormState('trFormState', {});
     }
     setMessage({ title: 'Formulário Limpo', text: `O formulário do ${docType.toUpperCase()} foi limpo.` });
-  };
+  }, []);
 
   const getAttachmentDataUrl = (attachment: Attachment) => {
     return `data:${attachment.type};base64,${attachment.content}`;
@@ -773,16 +787,16 @@ Solicitação do usuário: "${refinePrompt}"
     );
   };
 
-  const switchView = (view: DocumentType) => {
+  const switchView = useCallback((view: DocumentType) => {
     setActiveView(view);
     setValidationErrors(new Set());
-  };
+  }, []);
 
   const toggleSidebarSection = (section: 'etps' | 'trs' | 'rag') => {
     setOpenSidebarSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
   
-  const handleCreateNewDocument = (docType: DocumentType) => {
+  const handleCreateNewDocument = useCallback((docType: DocumentType) => {
     setIsNewDocModalOpen(false);
     switchView(docType);
     handleClearForm(docType)();
@@ -790,10 +804,39 @@ Solicitação do usuário: "${refinePrompt}"
         title: 'Novo Documento',
         text: `Um novo formulário para ${docType.toUpperCase()} foi iniciado.`
     });
-  };
+  }, [switchView, handleClearForm]);
+
+  // PWA Shortcut Handler
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const action = urlParams.get('action');
+    if (action === 'new-etp' || action === 'new-tr') {
+      const docType = action === 'new-etp' ? 'etp' : 'tr';
+      handleCreateNewDocument(docType);
+      // Clean up URL to prevent re-triggering on reload
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [isAuthenticated, handleCreateNewDocument]);
 
   const displayDocumentHistory = (doc: SavedDocument) => {
     setHistoryModalContent(doc);
+  };
+  
+  const handleInstallClick = () => {
+    if (!installPrompt) {
+        return;
+    }
+    installPrompt.prompt();
+    installPrompt.userChoice.then(({ outcome }: { outcome: 'accepted' | 'dismissed' }) => {
+        if (outcome === 'accepted') {
+            console.log('User accepted the install prompt');
+        } else {
+            console.log('User dismissed the install prompt');
+        }
+        setInstallPrompt(null);
+    });
   };
 
   if (!isAuthenticated) {
@@ -1293,7 +1336,16 @@ Solicitação do usuário: "${refinePrompt}"
         </div>
       </div>
     </Modal>
-
+    
+    {installPrompt && (
+        <button
+            onClick={handleInstallClick}
+            className="fixed bottom-28 right-8 bg-green-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40"
+            title="Instalar App"
+          >
+            <Icon name="download" />
+        </button>
+    )}
     <button
       onClick={() => setIsNewDocModalOpen(true)}
       className="fixed bottom-8 right-8 bg-pink-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-3xl hover:bg-pink-700 transition-transform transform hover:scale-110 z-40"

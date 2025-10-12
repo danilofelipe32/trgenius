@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tr-genius-pwa-v3';
+const CACHE_NAME = 'tr-genius-pwa-v4';
 const urlsToCache = [
   '/',
   '/_redirects',
@@ -15,8 +15,16 @@ const urlsToCache = [
   '/types.ts',
   '/manifest.json',
   '/lei14133.json',
+  '/icons/icon-72x72.png',
+  '/icons/icon-96x96.png',
+  '/icons/icon-128x128.png',
+  '/icons/icon-144x144.png',
+  '/icons/icon-152x152.png',
   '/icons/icon192.png',
+  '/icons/icon-384x384.png',
   '/icons/icon512.png',
+  '/screenshots/screenshot1.png',
+  '/screenshots/screenshot2.png',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
@@ -33,10 +41,31 @@ self.addEventListener('install', (event) => {
         console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
+      .then(() => self.skipWaiting()) // Force activation of new SW
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  // Use a network-first strategy for navigation requests (HTML pages)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // If network is available, cache the response and return it
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, response.clone());
+            return response;
+          });
+        })
+        .catch(() => {
+          // If network fails, serve the cached index.html
+          return caches.match('/');
+        })
+    );
+    return;
+  }
+
+  // Use a cache-first strategy for all other requests (assets, etc.)
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -85,6 +114,6 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Take control of open clients
   );
 });
