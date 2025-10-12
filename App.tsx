@@ -878,10 +878,49 @@ Solicitação do usuário: "${refinePrompt}"
                                 <span className="font-medium text-slate-800 truncate">{att.name}</span>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                                <button onClick={() => setViewingAttachment(att)} className="text-blue-600 hover:text-blue-800 font-semibold">Visualizar</button>
+                                <button 
+                                    onClick={() => viewingAttachment?.name === att.name ? setViewingAttachment(null) : setViewingAttachment(att)} 
+                                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                                >
+                                    {viewingAttachment?.name === att.name ? 'Ocultar' : 'Visualizar'}
+                                </button>
                             </div>
                         </div>
                     ))}
+                </div>
+            </div>
+        )}
+        
+        {viewingAttachment && (
+            <div className="mt-6 pt-6 border-t border-slate-200">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-bold text-slate-800 truncate" title={viewingAttachment.name}>Visualizando: {viewingAttachment.name}</h3>
+                    <button onClick={() => setViewingAttachment(null)} className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full">
+                        <Icon name="times" className="text-xl" />
+                    </button>
+                </div>
+                <div className="w-full h-[60vh] bg-slate-100 rounded-lg flex items-center justify-center">
+                    {viewingAttachment.type.startsWith('image/') ? (
+                        <img src={getAttachmentDataUrl(viewingAttachment)} alt={viewingAttachment.name} className="max-w-full max-h-full object-contain" />
+                    ) : viewingAttachment.type === 'application/pdf' ? (
+                        <object data={getAttachmentDataUrl(viewingAttachment)} type="application/pdf" width="100%" height="100%">
+                            <p className="p-4 text-center text-slate-600">O seu navegador não suporta a pré-visualização de PDFs. <a href={getAttachmentDataUrl(viewingAttachment)} download={viewingAttachment.name} className="text-blue-600 hover:underline">Clique aqui para fazer o download.</a></p>
+                        </object>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                            <Icon name="file-download" className="text-5xl text-slate-400 mb-4" />
+                            <p className="text-slate-700 text-lg mb-2">A pré-visualização não está disponível para este tipo de ficheiro.</p>
+                            <p className="text-slate-500 mb-6 text-sm">({viewingAttachment.type})</p>
+                            <a 
+                                href={getAttachmentDataUrl(viewingAttachment)} 
+                                download={viewingAttachment.name}
+                                className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Icon name="download" />
+                                Fazer Download
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
         )}
@@ -1421,7 +1460,7 @@ Solicitação do usuário: "${refinePrompt}"
 
       <Modal 
         isOpen={isPreviewModalOpen} 
-        onClose={() => setIsPreviewModalOpen(false)} 
+        onClose={() => { setIsPreviewModalOpen(false); setViewingAttachment(null); }} 
         title="Pré-visualização do Documento" 
         maxWidth="max-w-3xl"
         footer={
@@ -1487,33 +1526,6 @@ Solicitação do usuário: "${refinePrompt}"
           <div className="bg-slate-50 p-4 rounded-lg max-h-[60vh] overflow-y-auto">
             <pre className="whitespace-pre-wrap word-wrap font-sans text-sm text-slate-700">{analysisContent.content}</pre>
           </div>
-      </Modal>
-
-      <Modal isOpen={!!viewingAttachment} onClose={() => setViewingAttachment(null)} title={viewingAttachment?.name || 'Visualizador de Anexo'} maxWidth="max-w-4xl">
-        {viewingAttachment && (
-            <div className="w-full h-[75vh]">
-                {viewingAttachment.type.startsWith('image/') ? (
-                    <img src={getAttachmentDataUrl(viewingAttachment)} alt={viewingAttachment.name} className="max-w-full max-h-full mx-auto object-contain" />
-                ) : viewingAttachment.type === 'application/pdf' ? (
-                    <object data={getAttachmentDataUrl(viewingAttachment)} type="application/pdf" width="100%" height="100%">
-                        <p>O seu navegador não suporta a pré-visualização de PDFs. <a href={getAttachmentDataUrl(viewingAttachment)} download={viewingAttachment.name} className="text-blue-600 hover:underline">Clique aqui para fazer o download.</a></p>
-                    </object>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full bg-slate-100 rounded-lg p-8">
-                        <Icon name="file-download" className="text-5xl text-slate-400 mb-4" />
-                        <p className="text-slate-700 text-lg mb-2">A pré-visualização não está disponível para este tipo de ficheiro.</p>
-                        <p className="text-slate-500 mb-6">({viewingAttachment.type})</p>
-                        <a 
-                            href={getAttachmentDataUrl(viewingAttachment)} 
-                            download={viewingAttachment.name}
-                            className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            Fazer Download
-                        </a>
-                    </div>
-                )}
-            </div>
-        )}
       </Modal>
 
       <Modal 
