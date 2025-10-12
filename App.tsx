@@ -957,12 +957,19 @@ Solicitação do usuário: "${refinePrompt}"
                   {uploadedFiles.map((file, index) => {
                     if (!file.isCore) return null;
                     return (
-                      <div key={index} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-200">
-                          <div className="flex items-center gap-3 text-sm font-medium text-slate-800 truncate">
-                              <Icon name="check-square" className="text-blue-600 text-lg" />
-                              <span className="truncate">{file.name}</span>
-                          </div>
-                          <Icon name="lock" className="text-slate-400 text-xs flex-shrink-0" title="Base de Conhecimento Principal (Sempre ativa)" />
+                      <div key={index} className="bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3 truncate">
+                                <input 
+                                    type="checkbox" 
+                                    className="h-5 w-5 rounded accent-blue-600 flex-shrink-0"
+                                    checked 
+                                    disabled 
+                                />
+                                <span className="font-medium text-slate-800 truncate">{file.name}</span>
+                            </div>
+                            <Icon name="lock" className="text-slate-400" title="Base de Conhecimento Principal (Sempre ativa)" />
+                        </div>
                       </div>
                     );
                   })}
