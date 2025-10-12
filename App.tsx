@@ -499,8 +499,8 @@ const App: React.FC = () => {
     setEditingDocName(doc.name);
   };
 
-// FIX: Corrected a validation issue where `.trim()` could be called on a non-string value, causing a type error.
-// The logic now safely converts the editing name to a string before trimming.
+  // FIX: Corrected a validation issue where `.trim()` could be called on a non-string value.
+  // The logic now safely converts the editing name to a string before trimming.
   const handleRenameDocument = () => {
     if (!editingDoc) {
       setEditingDoc(null);

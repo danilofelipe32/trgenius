@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-// FIX: Per guidelines, API key must be read from environment variables.
+// FIX: Per guidelines, API key must be from process.env.API_KEY.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export async function callGemini(prompt: string): Promise<string> {
