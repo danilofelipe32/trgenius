@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 
-// API key has been hardcoded for testing purposes on Netlify.
 const apiKey = "AIzaSyB1SGptDVNzOh888rzlNSkXCiT5P2goNo0";
 const ai = new GoogleGenAI({ apiKey: apiKey });
 

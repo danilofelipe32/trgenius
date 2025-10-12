@@ -1,30 +1,30 @@
-const CACHE_NAME = 'tr-genius-pwa-v4';
+const CACHE_NAME = 'tr-genius-pwa-v5';
 const urlsToCache = [
-  '/',
-  '/_redirects',
-  '/index.html',
-  '/index.tsx',
-  '/App.tsx',
-  '/components/Icon.tsx',
-  '/components/Login.tsx',
-  '/components/AttachmentManager.tsx',
-  '/services/storageService.ts',
-  '/services/geminiService.ts',
-  '/services/ragService.ts',
-  '/services/exportService.ts',
-  '/types.ts',
-  '/manifest.json',
-  '/lei14133.json',
-  '/icons/icon-72x72.png',
-  '/icons/icon-96x96.png',
-  '/icons/icon-128x128.png',
-  '/icons/icon-144x144.png',
-  '/icons/icon-152x152.png',
-  '/icons/icon192.png',
-  '/icons/icon-384x384.png',
-  '/icons/icon512.png',
-  '/screenshots/screenshot1.png',
-  '/screenshots/screenshot2.png',
+  '.',
+  './_redirects',
+  './index.html',
+  './index.tsx',
+  './App.tsx',
+  './components/Icon.tsx',
+  './components/Login.tsx',
+  './components/AttachmentManager.tsx',
+  './services/storageService.ts',
+  './services/geminiService.ts',
+  './services/ragService.ts',
+  './services/exportService.ts',
+  './types.ts',
+  './manifest.json',
+  './lei14133.json',
+  './icons/icon-72x72.png',
+  './icons/icon-96x96.png',
+  './icons/icon-128x128.png',
+  './icons/icon-144x144.png',
+  './icons/icon-152x152.png',
+  './icons/icon192.png',
+  './icons/icon-384x384.png',
+  './icons/icon512.png',
+  './screenshots/screenshot1.png',
+  './screenshots/screenshot2.png',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js',
@@ -59,7 +59,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // If network fails, serve the cached index.html
-          return caches.match('/');
+          return caches.match('./index.html');
         })
     );
     return;
