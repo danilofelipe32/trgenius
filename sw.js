@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tr-genius-pwa-v7';
+const CACHE_NAME = 'tr-genius-pwa-v9';
 const urlsToCache = [
   // Core App Shell
   '.',
@@ -66,9 +66,8 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
 
   // Strategy 1: Network First for Navigation
-  // For HTML page requests, always try the network first to get the latest version.
-  // If the network fails, fall back to the cached app shell (index.html).
-  // This ensures the app can load offline while users get updates when connected.
+  // Ensures the user always gets the latest HTML shell when online,
+  // with a reliable offline fallback.
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -80,7 +79,7 @@ self.addEventListener('fetch', (event) => {
         } catch (error) {
           console.log('Network request for navigation failed, serving cache fallback.', error);
           const cache = await caches.open(CACHE_NAME);
-          // The fallback is the main entry point of the PWA.
+          // Fallback to the cached index.html for offline access.
           return await cache.match('./index.html');
         }
       })()
@@ -88,36 +87,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 2: Stale-While-Revalidate for Static Assets
-  // For assets like JS, CSS, images, and fonts, serve from cache immediately for speed.
-  // Simultaneously, fetch an updated version from the network in the background
-  // and update the cache for the next visit.
+  // Strategy 2: Stale-While-Revalidate for all other assets
+  // This strategy serves assets from the cache immediately for performance,
+  // while simultaneously fetching a fresh version from the network in the background
+  // to update the cache for the next time.
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
       const cachedResponse = await cache.match(request);
       
-      const fetchPromise = fetch(request).then(networkResponse => {
-        // Check for a valid response before caching
+      // Kick off the network request and update the cache in the background.
+      // We don't await this promise here, allowing us to return the cached response immediately.
+      const networkResponsePromise = fetch(request).then(networkResponse => {
         if (networkResponse && networkResponse.status === 200 && !request.url.startsWith('chrome-extension://')) {
           cache.put(request, networkResponse.clone());
         }
         return networkResponse;
-      }).catch(err => {
-        // Network failed, but we might have a cached response.
-        // If not, the error will propagate.
-        console.warn(`Fetch failed for ${request.url}; returning cached response if available.`, err);
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        throw err;
       });
 
-      // Return cached response if available (stale), otherwise wait for the network response.
-      return cachedResponse || fetchPromise;
+      // Return the cached response if available, otherwise wait for the network response.
+      // This provides the ideal balance of speed and freshness.
+      return cachedResponse || networkResponsePromise;
     })()
   );
 });
+
 
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
