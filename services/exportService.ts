@@ -45,6 +45,23 @@ export const exportDocumentToPDF = (doc: SavedDocument, sections: Section[]) => 
         }
     });
 
+    if (doc.attachments && doc.attachments.length > 0) {
+        yPos += 10;
+        if (yPos > pageHeight - pageMargin) {
+            pdf.addPage();
+            yPos = pageMargin;
+        }
+        pdf.setLineWidth(0.5);
+        pdf.line(pageMargin, yPos, pageWidth - pageMargin, yPos);
+        yPos += 15;
+
+        addText('Anexos:', { size: 14, isBold: true, spacing: 10 });
+
+        doc.attachments.forEach(att => {
+            addText(`- ${att.name} (${att.type})`, { size: 11, spacing: 5 });
+        });
+    }
+
     const pageCount = pdf.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);

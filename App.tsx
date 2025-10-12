@@ -164,7 +164,8 @@ const App: React.FC = () => {
   const [etpSectionsContent, setEtpSectionsContent] = useState<Record<string, string>>({});
   const [trSectionsContent, setTrSectionsContent] = useState<Record<string, string>>({});
   const [etpAttachments, setEtpAttachments] = useState<Attachment[]>([]);
-  const [loadedEtpForTr, setLoadedEtpForTr] = useState<{ name: string; content: string } | null>(null);
+  const [trAttachments, setTrAttachments] = useState<Attachment[]>([]);
+  const [loadedEtpForTr, setLoadedEtpForTr] = useState<{ id: number; name: string; content: string } | null>(null);
 
   // State for API and files
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -512,6 +513,7 @@ const App: React.FC = () => {
         name,
         createdAt: new Date().toISOString(),
         sections: { ...sections },
+        attachments: trAttachments,
         history: [],
         priority: 'medium',
       };
@@ -534,6 +536,7 @@ const App: React.FC = () => {
         storage.saveFormState('etpFormState', docToLoad.sections);
       } else {
         setTrSectionsContent(docToLoad.sections);
+        setTrAttachments(docToLoad.attachments || []);
         storage.saveFormState('trFormState', docToLoad.sections);
       }
       setMessage({ title: 'Documento Carregado', text: `O ${docType.toUpperCase()} "${docToLoad.name}" foi carregado.` });
@@ -661,7 +664,28 @@ const App: React.FC = () => {
         const content = etpSections
             .map(section => `## ${section.title}\n${etp.sections[section.id] || 'Não preenchido.'}`)
             .join('\n\n');
-        setLoadedEtpForTr({ name: etp.name, content });
+        setLoadedEtpForTr({ id: etp.id, name: etp.name, content });
+    }
+  };
+
+  const handleImportEtpAttachments = () => {
+    if (!loadedEtpForTr) {
+      setMessage({ title: 'Aviso', text: 'Nenhum ETP carregado para importar anexos.' });
+      return;
+    }
+    const etp = savedETPs.find(e => e.id === loadedEtpForTr.id);
+    if (etp && etp.attachments && etp.attachments.length > 0) {
+      const newAttachments = etp.attachments.filter(
+        att => !trAttachments.some(trAtt => trAtt.name === att.name)
+      );
+      if (newAttachments.length > 0) {
+        setTrAttachments(prev => [...prev, ...newAttachments]);
+        setMessage({ title: 'Sucesso', text: `${newAttachments.length} anexo(s) importado(s) do ETP "${etp.name}".` });
+      } else {
+        setMessage({ title: 'Informação', text: 'Todos os anexos do ETP já constam neste TR.' });
+      }
+    } else {
+      setMessage({ title: 'Aviso', text: `O ETP "${loadedEtpForTr.name}" não possui anexos para importar.` });
     }
   };
 
@@ -798,6 +822,7 @@ Solicitação do usuário: "${refinePrompt}"
         storage.saveFormState('etpFormState', {});
     } else {
         setTrSectionsContent({});
+        setTrAttachments([]);
         setLoadedEtpForTr(null);
         const etpSelector = document.getElementById('etp-selector') as HTMLSelectElement;
         if (etpSelector) etpSelector.value = "";
@@ -1382,7 +1407,43 @@ Solicitação do usuário: "${refinePrompt}"
                     )}
                 </div>
 
-                {trSections.map(section => (
+                {trSections.map(section => {
+                  if (section.isAttachmentSection) {
+                    return (
+                        <div key={section.id} className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
+                            <div className="flex justify-between items-center mb-3 flex-wrap gap-y-3">
+                                 <div className="flex items-center gap-2">
+                                    <label className="block text-lg font-semibold text-slate-700">{section.title}</label>
+                                    {section.tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={section.tooltip} />}
+                                 </div>
+                                 <button
+                                    onClick={handleImportEtpAttachments}
+                                    disabled={!loadedEtpForTr}
+                                    className="px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Importar todos os anexos do ETP carregado"
+                                 >
+                                    <Icon name="file-import" className="mr-2" />
+                                    Importar do ETP
+                                 </button>
+                            </div>
+                            <textarea
+                                id={section.id}
+                                value={trSectionsContent[section.id] || ''}
+                                onChange={(e) => handleSectionChange('tr', section.id, e.target.value)}
+                                placeholder={section.placeholder}
+                                className="w-full h-24 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors border-slate-200 focus:ring-blue-500 mb-4"
+                            />
+                            
+                            <AttachmentManager
+                                attachments={trAttachments}
+                                onAttachmentsChange={setTrAttachments}
+                                onPreview={setViewingAttachment}
+                                setMessage={setMessage}
+                            />
+                        </div>
+                    );
+                  }
+                  return (
                     <Section
                         key={section.id}
                         id={section.id}
@@ -1399,7 +1460,8 @@ Solicitação do usuário: "${refinePrompt}"
                         hasError={validationErrors.has(section.id)}
                         tooltip={section.tooltip}
                     />
-                ))}
+                  );
+                })}
                 <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-slate-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-6" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
                     <div className="grid grid-cols-2 gap-3 md:flex md:items-center">
                         <span className="hidden md:block text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
