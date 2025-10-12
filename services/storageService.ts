@@ -36,6 +36,9 @@ const saveDocuments = (key: string, docs: SavedDocument[]): void => {
     if (newDoc.name !== oldDoc.name) {
       changes.push(`nome alterado de "${oldDoc.name}" para "${newDoc.name}"`);
     }
+    if (newDoc.priority !== oldDoc.priority) {
+      changes.push(`prioridade alterada de "${oldDoc.priority || 'nenhuma'}" para "${newDoc.priority}"`);
+    }
     if (JSON.stringify(newDoc.sections) !== JSON.stringify(oldDoc.sections)) {
       changes.push('conteúdo das seções modificado');
     }

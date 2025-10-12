@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion } from './types';
+import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
 import { processSingleUploadedFile, chunkText } from './services/ragService';
@@ -113,6 +113,23 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer,
   );
 };
 
+const PriorityIndicator: React.FC<{ priority?: Priority }> = ({ priority }) => {
+    const priorityStyles: Record<Priority, { color: string; label: string }> = {
+        low: { color: 'bg-green-500', label: 'Baixa Prioridade' },
+        medium: { color: 'bg-yellow-500', label: 'Média Prioridade' },
+        high: { color: 'bg-red-500', label: 'Alta Prioridade' },
+    };
+
+    if (!priority) return <div title="Prioridade não definida" className="w-3 h-3 rounded-full bg-slate-300 flex-shrink-0"></div>;
+
+    return (
+        <div
+            title={priorityStyles[priority].label}
+            className={`w-3 h-3 rounded-full ${priorityStyles[priority].color} flex-shrink-0`}
+        ></div>
+    );
+};
+
 
 // --- Main App Component ---
 const App: React.FC = () => {
@@ -156,14 +173,16 @@ const App: React.FC = () => {
   const [isRefining, setIsRefining] = useState(false);
 
   // Inline rename state
-  const [editingDoc, setEditingDoc] = useState<{ type: DocumentType; id: number } | null>(null);
-  const [editingDocName, setEditingDocName] = useState('');
+  const [editingDoc, setEditingDoc] = useState<{ type: DocumentType; id: number; name: string; priority: Priority; } | null>(null);
 
   // Auto-save state
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>('Salvo');
   const debounceTimeoutRef = useRef<number | null>(null);
   const etpContentRef = useRef(etpSectionsContent);
   const trContentRef = useRef(trSectionsContent);
+
+  // Filter state
+  const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
   
   // Sections definitions
   const etpSections: SectionType[] = [
@@ -466,6 +485,7 @@ const App: React.FC = () => {
         sections: { ...sections },
         attachments: etpAttachments,
         history: [],
+        priority: 'medium',
       };
       const updatedETPs = [...savedETPs, newDoc];
       setSavedETPs(updatedETPs);
@@ -480,6 +500,7 @@ const App: React.FC = () => {
         createdAt: new Date().toISOString(),
         sections: { ...sections },
         history: [],
+        priority: 'medium',
       };
       const updatedTRs = [...savedTRs, newDoc];
       setSavedTRs(updatedTRs);
@@ -521,43 +542,34 @@ const App: React.FC = () => {
   };
 
   const handleStartEditing = (type: DocumentType, doc: SavedDocument) => {
-    setEditingDoc({ type, id: doc.id });
-    setEditingDocName(doc.name);
+    setEditingDoc({ type, id: doc.id, name: doc.name, priority: doc.priority || 'medium' });
   };
 
-  // FIX: Corrected a validation issue where `.trim()` could be called on a non-string value.
-  // The logic now safely converts the editing name to a string before trimming.
-  const handleRenameDocument = () => {
-    if (!editingDoc) {
-      setEditingDoc(null);
-      return;
-    }
+  const handleUpdateDocumentDetails = () => {
+    if (!editingDoc) return;
 
-    const newName = String(editingDocName || '').trim();
-
+    const { type, id, name, priority } = editingDoc;
+    const newName = name.trim();
     if (!newName) {
-      setEditingDoc(null); // Cancel edit if name is empty
-      return;
+        setEditingDoc(null); // Cancel edit if name is empty
+        return;
     }
 
-    const { type, id } = editingDoc;
+    const updateDocs = (docs: SavedDocument[]) => docs.map(doc =>
+        doc.id === id ? { ...doc, name: newName, priority: priority } : doc
+    );
 
     if (type === 'etp') {
-      const updated = savedETPs.map(doc =>
-        doc.id === id ? { ...doc, name: newName } : doc
-      );
-      setSavedETPs(updated);
-      storage.saveETPs(updated);
+        const updated = updateDocs(savedETPs);
+        setSavedETPs(updated);
+        storage.saveETPs(updated);
     } else { // type === 'tr'
-      const updated = savedTRs.map(doc =>
-        doc.id === id ? { ...doc, name: newName } : doc
-      );
-      setSavedTRs(updated);
-      storage.saveTRs(updated);
+        const updated = updateDocs(savedTRs);
+        setSavedTRs(updated);
+        storage.saveTRs(updated);
     }
 
     setEditingDoc(null);
-    setEditingDocName('');
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -904,6 +916,9 @@ Solicitação do usuário: "${refinePrompt}"
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
+  
+  const filteredETPs = savedETPs.filter(etp => priorityFilter === 'all' || etp.priority === priorityFilter);
+  const filteredTRs = savedTRs.filter(tr => priorityFilter === 'all' || tr.priority === priorityFilter);
 
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
@@ -933,8 +948,20 @@ Solicitação do usuário: "${refinePrompt}"
             
             <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
                 <div className="py-2">
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Base de Conhecimento</h3>
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Filtro de Prioridade</h3>
+                    <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1">
+                        {(['all', 'high', 'medium', 'low'] as const).map(p => (
+                            <button
+                                key={p}
+                                onClick={() => setPriorityFilter(p)}
+                                className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors w-full capitalize ${priorityFilter === p ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:bg-slate-200'}`}
+                            >
+                                {p === 'all' ? 'Todos' : p === 'high' ? 'Alta' : p}
+                            </button>
+                        ))}
+                    </div>
                 </div>
+
                 {/* Accordion Section: ETPs */}
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left">
@@ -943,25 +970,41 @@ Solicitação do usuário: "${refinePrompt}"
                   </button>
                   <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.etps ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
                     <div className="space-y-2">
-                      {savedETPs.length > 0 ? (
+                      {filteredETPs.length > 0 ? (
                         <ul className="space-y-2">
-                          {savedETPs.map(etp => (
+                          {filteredETPs.map(etp => (
                             <li key={etp.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
                               {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
-                                  <input
-                                      type="text"
-                                      value={editingDocName}
-                                      onChange={(e) => setEditingDocName(e.target.value)}
-                                      onBlur={handleRenameDocument}
-                                      onKeyDown={(e) => {
-                                          if (e.key === 'Enter') handleRenameDocument();
-                                          if (e.key === 'Escape') setEditingDoc(null);
-                                      }}
-                                      className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
-                                      autoFocus
-                                  />
+                                  <div className="w-full">
+                                      <input
+                                          type="text"
+                                          value={editingDoc.name}
+                                          onChange={(e) => setEditingDoc({ ...editingDoc, name: e.target.value })}
+                                          onBlur={handleUpdateDocumentDetails}
+                                          onKeyDown={(e) => {
+                                              if (e.key === 'Enter') handleUpdateDocumentDetails();
+                                              if (e.key === 'Escape') setEditingDoc(null);
+                                          }}
+                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1 mb-2"
+                                          autoFocus
+                                      />
+                                      <div className="flex items-center justify-around">
+                                          {(['high', 'medium', 'low'] as const).map(p => (
+                                              <button
+                                                  key={p}
+                                                  onClick={() => setEditingDoc(prev => prev ? { ...prev, priority: p } : null)}
+                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 capitalize ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
+                                              >
+                                                  {p === 'high' ? 'Alta' : p}
+                                              </button>
+                                          ))}
+                                      </div>
+                                  </div>
                               ) : (
-                                  <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
+                                  <div className="flex items-center gap-2 truncate">
+                                    <PriorityIndicator priority={etp.priority} />
+                                    <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
+                                  </div>
                               )}
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
@@ -973,7 +1016,7 @@ Solicitação do usuário: "${refinePrompt}"
                             </li>
                           ))}
                         </ul>
-                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum ETP salvo.</p>}
+                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum ETP corresponde ao filtro.</p>}
                     </div>
                   </div>
                 </div>
@@ -986,25 +1029,41 @@ Solicitação do usuário: "${refinePrompt}"
                   </button>
                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.trs ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
                     <div className="space-y-2">
-                      {savedTRs.length > 0 ? (
+                      {filteredTRs.length > 0 ? (
                         <ul className="space-y-2">
-                          {savedTRs.map(tr => (
+                          {filteredTRs.map(tr => (
                             <li key={tr.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
                                {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
-                                  <input
-                                      type="text"
-                                      value={editingDocName}
-                                      onChange={(e) => setEditingDocName(e.target.value)}
-                                      onBlur={handleRenameDocument}
-                                      onKeyDown={(e) => {
-                                          if (e.key === 'Enter') handleRenameDocument();
-                                          if (e.key === 'Escape') setEditingDoc(null);
-                                      }}
-                                      className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
-                                      autoFocus
-                                  />
+                                  <div className="w-full">
+                                      <input
+                                          type="text"
+                                          value={editingDoc.name}
+                                          onChange={(e) => setEditingDoc({ ...editingDoc, name: e.target.value })}
+                                          onBlur={handleUpdateDocumentDetails}
+                                          onKeyDown={(e) => {
+                                              if (e.key === 'Enter') handleUpdateDocumentDetails();
+                                              if (e.key === 'Escape') setEditingDoc(null);
+                                          }}
+                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1 mb-2"
+                                          autoFocus
+                                      />
+                                      <div className="flex items-center justify-around">
+                                          {(['high', 'medium', 'low'] as const).map(p => (
+                                              <button
+                                                  key={p}
+                                                  onClick={() => setEditingDoc(prev => prev ? { ...prev, priority: p } : null)}
+                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 capitalize ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
+                                              >
+                                                  {p === 'high' ? 'Alta' : p}
+                                              </button>
+                                          ))}
+                                      </div>
+                                  </div>
                               ) : (
-                                  <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
+                                  <div className="flex items-center gap-2 truncate">
+                                    <PriorityIndicator priority={tr.priority} />
+                                    <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
+                                  </div>
                               )}
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
@@ -1016,11 +1075,14 @@ Solicitação do usuário: "${refinePrompt}"
                             </li>
                           ))}
                         </ul>
-                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum TR salvo.</p>}
+                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum TR corresponde ao filtro.</p>}
                     </div>
                    </div>
                 </div>
-
+                
+                <div className="py-2 border-t mt-2">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Base de Conhecimento</h3>
+                </div>
                 {/* Accordion Section: RAG */}
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('rag')} className="w-full flex justify-between items-center text-left">

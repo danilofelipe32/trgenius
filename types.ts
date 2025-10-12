@@ -1,3 +1,5 @@
+export type Priority = 'low' | 'medium' | 'high';
+
 export interface Section {
   id: string;
   title: string;
@@ -33,6 +35,7 @@ export interface SavedDocument {
   sections: DocumentSection;
   attachments?: Attachment[];
   history?: DocumentVersion[];
+  priority?: Priority;
 }
 
 export type DocumentType = 'etp' | 'tr';
