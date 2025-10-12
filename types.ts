@@ -25,6 +25,7 @@ export interface SavedDocument {
   createdAt: string;
   sections: DocumentSection;
   attachments?: Attachment[];
+  historico?: string[];
 }
 
 export type DocumentType = 'etp' | 'tr';
