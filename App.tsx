@@ -925,7 +925,23 @@ Solicitação do usuário: "${refinePrompt}"
             </p>
             
             <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
-                
+                {/* Base de Conhecimento Section */}
+                <div className="py-2">
+                  <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Base de Conhecimento</h3>
+                  {uploadedFiles.map((file, index) => {
+                    if (!file.isCore) return null;
+                    return (
+                      <div key={index} className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <div className="flex items-center gap-3 text-sm font-medium text-slate-800 truncate">
+                              <Icon name="check-square" className="text-blue-600 text-lg" />
+                              <span className="truncate">{file.name}</span>
+                          </div>
+                          <Icon name="lock" className="text-slate-400 text-xs flex-shrink-0" title="Base de Conhecimento Principal (Sempre ativa)" />
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Accordion Section: ETPs */}
                 <div className="py-2">
                   <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left">
@@ -1044,24 +1060,26 @@ Solicitação do usuário: "${refinePrompt}"
                           </ul>
                         </div>
                       )}
-                      {uploadedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
-                          <label className={`flex items-center gap-2 text-sm font-medium text-slate-700 truncate ${file.isCore ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                            <input 
-                                type="checkbox" 
-                                checked={file.selected} 
-                                onChange={() => handleToggleFileSelection(index)} 
-                                disabled={file.isCore}
-                                className="form-checkbox h-4 w-4 text-blue-600 rounded disabled:opacity-70 disabled:cursor-not-allowed" 
-                            />
-                            <span className="truncate">{file.name}</span>
-                            {file.isCore && <Icon name="lock" className="text-slate-400 text-xs" title="Base de Conhecimento Principal" />}
-                          </label>
-                          {!file.isCore && (
-                              <button onClick={() => handleDeleteFile(index)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
-                          )}
-                        </div>
-                      ))}
+                      {uploadedFiles.filter(f => !f.isCore).length === 0 && processingFiles.length === 0 && (
+                          <p className="text-sm text-slate-400 italic px-2">Nenhum ficheiro carregado.</p>
+                      )}
+                      {uploadedFiles.map((file, index) => {
+                          if (file.isCore) return null;
+                          return (
+                            <div key={index} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 truncate cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={file.selected}
+                                        onChange={() => handleToggleFileSelection(index)}
+                                        className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                                    />
+                                    <span className="truncate">{file.name}</span>
+                                </label>
+                                <button onClick={() => handleDeleteFile(index)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
+                            </div>
+                          );
+                      })}
                       <label className="mt-2 w-full flex items-center justify-center px-4 py-3 bg-blue-50 border-2 border-dashed border-blue-200 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
                           <Icon name="upload" className="mr-2" />
                           <span className="text-sm font-semibold">Carregar ficheiros</span>
