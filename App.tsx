@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
@@ -223,6 +224,18 @@ const App: React.FC = () => {
     { id: 'tr-input-pagamento', title: '6. Modelo de Pagamento e Dotação', placeholder: 'Ex: Pagamento em parcela única, em até 30 dias...', hasGen: true, hasRiskAnalysis: true, tooltip: "Defina os critérios e o modelo de pagamento, incluindo prazos, condições e a dotação orçamentária que cobrirá a despesa. (Art. 40, V, e))." },
     { id: 'tr-input-fiscalizacao', title: '7. Gestão e Fiscalização do Contrato', placeholder: 'Ex: A fiscalização será exercida por servidor(a) designado(a)...', hasGen: true, hasRiskAnalysis: true, tooltip: "Estabeleça os mecanismos de fiscalização e gestão do contrato, indicando os responsáveis e como será feito o acompanhamento da execução. (Art. 40, V, g))." },
     { id: 'tr-input-sancoes', title: '8. Sanções Administrativas', placeholder: 'Ex: O descumprimento das cláusulas sujeitará a contratada...', hasGen: true, hasRiskAnalysis: true, tooltip: "Determine as sanções aplicáveis em caso de inadimplemento ou descumprimento das obrigações contratuais por parte da contratada. (Art. 40, V, h))." }
+  ];
+
+  const priorityFilters: {
+    key: 'all' | Priority;
+    label: string;
+    activeClasses: string;
+    inactiveClasses: string;
+  }[] = [
+    { key: 'all', label: 'Todos', activeClasses: 'bg-white shadow-sm text-slate-800', inactiveClasses: 'text-slate-500 hover:bg-slate-200' },
+    { key: 'high', label: 'Alta', activeClasses: 'bg-red-500 text-white shadow-sm', inactiveClasses: 'text-red-700 hover:bg-red-100' },
+    { key: 'medium', label: 'Média', activeClasses: 'bg-yellow-500 text-white shadow-sm', inactiveClasses: 'text-yellow-700 hover:bg-yellow-100' },
+    { key: 'low', label: 'Baixa', activeClasses: 'bg-green-500 text-white shadow-sm', inactiveClasses: 'text-green-700 hover:bg-green-100' },
   ];
 
 
@@ -968,14 +981,16 @@ Solicitação do usuário: "${refinePrompt}"
             <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
                 <div className="py-2">
                     <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Filtro de Prioridade</h3>
-                    <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1">
-                        {(['all', 'high', 'medium', 'low'] as const).map(p => (
+                    <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1 gap-1">
+                        {priorityFilters.map(filter => (
                             <button
-                                key={p}
-                                onClick={() => setPriorityFilter(p)}
-                                className={`px-2 py-1 text-xs font-semibold rounded-md transition-colors w-full capitalize ${priorityFilter === p ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:bg-slate-200'}`}
+                                key={filter.key}
+                                onClick={() => setPriorityFilter(filter.key)}
+                                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all w-full ${
+                                    priorityFilter === filter.key ? filter.activeClasses : filter.inactiveClasses
+                                }`}
                             >
-                                {p === 'all' ? 'Todos' : p === 'high' ? 'Alta' : p}
+                                {filter.label}
                             </button>
                         ))}
                     </div>
