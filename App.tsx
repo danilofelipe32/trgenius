@@ -1,8 +1,3 @@
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
@@ -1221,10 +1216,18 @@ Solicitação do usuário: "${refinePrompt}"
                   </div>
                 </div>
             </div>
-            <div className="mt-auto pt-4 border-t border-slate-200">
+            <div className="mt-auto pt-4 border-t border-slate-200 flex items-center gap-2">
+                <button
+                    onClick={() => setIsInfoModalOpen(true)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    title="Informações"
+                >
+                    <Icon name="info-circle" />
+                    Sobre
+                </button>
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
                 >
                     <Icon name="sign-out-alt" />
                     Sair
@@ -1272,7 +1275,6 @@ Solicitação do usuário: "${refinePrompt}"
                             <span>Offline</span>
                         </div>
                     )}
-                    <button onClick={() => setIsInfoModalOpen(true)} className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-blue-600 transition-colors flex items-center justify-center" title="Informações"><Icon name="info-circle" /></button>
                 </div>
             </header>
             
