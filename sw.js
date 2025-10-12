@@ -7,6 +7,7 @@ const urlsToCache = [
   '/App.tsx',
   '/components/Icon.tsx',
   '/components/Login.tsx',
+  '/components/AttachmentManager.tsx',
   '/services/storageService.ts',
   '/services/geminiService.ts',
   '/services/ragService.ts',

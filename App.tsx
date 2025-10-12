@@ -6,6 +6,7 @@ import { processSingleUploadedFile, chunkText } from './services/ragService';
 import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
 import Login from './components/Login';
+import { AttachmentManager } from './components/AttachmentManager';
 
 // --- Reusable Section Component ---
 interface SectionProps {
@@ -576,47 +577,6 @@ const App: React.FC = () => {
       storage.saveStoredFiles(updatedFiles.filter(f => !f.isCore));
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = error => reject(error);
-    });
-  };
-
-  const handleEtpAttachmentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
-
-    // FIX: Explicitly type `fileList` as `File[]` to resolve type inference issues with `Array.from(FileList)`.
-    const fileList: File[] = Array.from(files);
-    const newAttachments: Attachment[] = [];
-    for (const file of fileList) {
-        if (etpAttachments.some(att => att.name === file.name)) {
-            setMessage({ title: 'Aviso', text: `O ficheiro "${file.name}" já foi anexado.` });
-            continue;
-        }
-        try {
-            const base64Content = await fileToBase64(file);
-            newAttachments.push({
-                name: file.name,
-                type: file.type,
-                content: base64Content,
-            });
-        } catch (error) {
-            console.error("Error converting file to base64", error);
-            setMessage({ title: 'Erro', text: `Não foi possível processar o ficheiro "${file.name}".` });
-        }
-    }
-    setEtpAttachments(prev => [...prev, ...newAttachments]);
-    event.target.value = ''; 
-  };
-
-  const handleRemoveEtpAttachment = (indexToRemove: number) => {
-    setEtpAttachments(prev => prev.filter((_, index) => index !== indexToRemove));
-  };
-
   const handleLoadEtpForTr = (etpId: string) => {
     if (etpId === "") {
         setLoadedEtpForTr(null);
@@ -1069,28 +1029,12 @@ Solicitação do usuário: "${refinePrompt}"
                                 className="w-full h-24 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors border-slate-200 focus:ring-blue-500 mb-4"
                             />
                             
-                            {etpAttachments.length > 0 && (
-                                <div className="space-y-2 mb-4">
-                                    {etpAttachments.map((file, index) => (
-                                        <div key={index} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg text-sm">
-                                            <div className="flex items-center gap-2 truncate">
-                                                <Icon name="file-alt" className="text-slate-500" />
-                                                <span className="font-medium text-slate-800 truncate">{file.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <button onClick={() => setViewingAttachment(file)} className="text-blue-600 hover:text-blue-800 font-semibold">Visualizar</button>
-                                                <button onClick={() => handleRemoveEtpAttachment(index)} className="text-red-600 hover:text-red-800 font-semibold">Remover</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <label className="w-full flex items-center justify-center px-4 py-3 bg-green-50 border-2 border-dashed border-green-200 text-green-700 rounded-lg cursor-pointer hover:bg-green-100 transition-colors">
-                                <Icon name="paperclip" className="mr-2" />
-                                <span className="font-semibold">Anexar Ficheiros</span>
-                                <input type="file" className="hidden" multiple onChange={handleEtpAttachmentUpload} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,image/*" />
-                            </label>
+                            <AttachmentManager
+                                attachments={etpAttachments}
+                                onAttachmentsChange={setEtpAttachments}
+                                onPreview={setViewingAttachment}
+                                setMessage={setMessage}
+                            />
                         </div>
                     );
                   }

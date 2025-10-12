@@ -15,6 +15,7 @@ export interface DocumentSection {
 export interface Attachment {
   name: string;
   type: string;
+  size: number;
   content: string; // base64 encoded content
 }
 
