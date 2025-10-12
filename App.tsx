@@ -8,6 +8,7 @@ import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
 import Login from './components/Login';
 import { AttachmentManager } from './components/AttachmentManager';
+import InstallPWA from './components/InstallPWA';
 
 // --- Reusable Section Component ---
 interface SectionProps {
@@ -144,6 +145,8 @@ const App: React.FC = () => {
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
   const [historyModalContent, setHistoryModalContent] = useState<SavedDocument | null>(null);
   const [installPrompt, setInstallPrompt] = useState<any>(null); // For PWA install prompt
+  const [isInstallBannerVisible, setIsInstallBannerVisible] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -255,6 +258,9 @@ const App: React.FC = () => {
     const handler = (e: Event) => {
         e.preventDefault();
         setInstallPrompt(e);
+        if (!sessionStorage.getItem('pwaInstallDismissed')) {
+            setIsInstallBannerVisible(true);
+        }
     };
     window.addEventListener('beforeinstallprompt', handler);
 
@@ -262,6 +268,20 @@ const App: React.FC = () => {
         window.removeEventListener('beforeinstallprompt', handler);
     };
   }, []);
+
+  // Online status listener
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+    };
+}, []);
 
   // --- Auto-save Effects ---
   useEffect(() => {
@@ -869,7 +889,13 @@ Solicitação do usuário: "${refinePrompt}"
             console.log('User dismissed the install prompt');
         }
         setInstallPrompt(null);
+        setIsInstallBannerVisible(false);
     });
+  };
+
+  const handleDismissInstallBanner = () => {
+    sessionStorage.setItem('pwaInstallDismissed', 'true');
+    setIsInstallBannerVisible(false);
   };
 
   const handleExportHistory = () => {
@@ -1128,7 +1154,13 @@ Solicitação do usuário: "${refinePrompt}"
                     </nav>
                   </div>
                 </div>
-                <div className="flex-shrink-0 ml-4">
+                <div className="flex-shrink-0 ml-4 flex items-center gap-2">
+                    {!isOnline && (
+                        <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">
+                            <Icon name="wifi-slash" />
+                            <span>Offline</span>
+                        </div>
+                    )}
                     <button onClick={() => setIsInfoModalOpen(true)} className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300 hover:text-blue-600 transition-colors flex items-center justify-center" title="Informações"><Icon name="info-circle" /></button>
                 </div>
             </header>
@@ -1423,7 +1455,7 @@ Solicitação do usuário: "${refinePrompt}"
       </div>
     </Modal>
     
-    {installPrompt && (
+    {installPrompt && !isInstallBannerVisible && (
         <button
             onClick={handleInstallClick}
             className="fixed bottom-28 right-8 bg-green-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40"
@@ -1439,6 +1471,12 @@ Solicitação do usuário: "${refinePrompt}"
     >
       <Icon name="plus" />
     </button>
+    {installPrompt && isInstallBannerVisible && (
+        <InstallPWA
+            onInstall={handleInstallClick}
+            onDismiss={handleDismissInstallBanner}
+        />
+    )}
     </div>
   );
 };
