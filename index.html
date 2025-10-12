@@ -30,7 +30,7 @@
     <meta name="theme-color" content="#3b82f6" />
     <link rel="icon" href="icons/icon192.png" />
     <link rel="apple-touch-icon" href="icons/icon192.png" />
-    <link rel="manifest" href="manifest.json" />
+    <!-- The manifest link will be injected automatically by vite-plugin-pwa -->
 
     <!-- iOS Specific Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -63,10 +63,13 @@
 <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.24.0",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.24.0",
+    "vite": "https://aistudiocdn.com/vite@^7.1.9",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.0.4",
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.0.3"
   }
 }
 </script>
@@ -74,18 +77,7 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-
-    <script type="module" src="./index.tsx"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: '.' }).then(registration => {
-            console.log('SW registered: ', registration);
-          }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-          });
-        });
-      }
-    </script>
+    <script type="module" src="/index.tsx"></script>
+    <!-- The service worker registration script is now injected automatically by vite-plugin-pwa -->
   </body>
 </html>
