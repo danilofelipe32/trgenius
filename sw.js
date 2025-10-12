@@ -1,8 +1,7 @@
-const CACHE_NAME = 'tr-genius-pwa-v11';
+const CACHE_NAME = 'tr-genius-pwa-v12';
 const urlsToCache = [
   // Core App Shell
   '.',
-  './_redirects',
   './index.html',
   './manifest.json',
   
