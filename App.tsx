@@ -140,6 +140,7 @@ const App: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Set<string>>(new Set());
   const [viewingAttachment, setViewingAttachment] = useState<Attachment | null>(null);
   const [isNewDocModalOpen, setIsNewDocModalOpen] = useState(false);
+  const [historyModalContent, setHistoryModalContent] = useState<SavedDocument | null>(null);
   
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -791,6 +792,10 @@ Solicitação do usuário: "${refinePrompt}"
     });
   };
 
+  const displayDocumentHistory = (doc: SavedDocument) => {
+    setHistoryModalContent(doc);
+  };
+
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
@@ -855,6 +860,7 @@ Solicitação do usuário: "${refinePrompt}"
                                 <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
                                 <button onClick={() => handleLoadDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
                                 <button onClick={() => { setPreviewContext({ type: 'etp', id: etp.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
+                                <button onClick={() => displayDocumentHistory(etp)} className="w-6 h-6 text-slate-500 hover:text-purple-600" title="Ver Histórico"><Icon name="history" /></button>
                                 <button onClick={() => handleDeleteDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
                               </div>
                             </li>
@@ -897,6 +903,7 @@ Solicitação do usuário: "${refinePrompt}"
                                 <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
                                 <button onClick={() => handleLoadDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
                                 <button onClick={() => { setPreviewContext({ type: 'tr', id: tr.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
+                                <button onClick={() => displayDocumentHistory(tr)} className="w-6 h-6 text-slate-500 hover:text-purple-600" title="Ver Histórico"><Icon name="history" /></button>
                                 <button onClick={() => handleDeleteDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
                               </div>
                             </li>
@@ -1237,7 +1244,27 @@ Solicitação do usuário: "${refinePrompt}"
                 )}
             </div>
         )}
-    </Modal>
+      </Modal>
+
+      <Modal 
+        isOpen={!!historyModalContent} 
+        onClose={() => setHistoryModalContent(null)} 
+        title={`Histórico de: ${historyModalContent?.name}`}
+        maxWidth="max-w-2xl"
+      >
+        {historyModalContent?.historico && historyModalContent.historico.length > 0 ? (
+          <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+            {historyModalContent.historico.map((entry, index) => (
+              <li key={index} className="flex items-start text-sm p-2 bg-slate-50 rounded-md">
+                <Icon name="clock" className="text-slate-400 mt-1 mr-3" />
+                <span className="text-slate-700">{entry}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-slate-500">Nenhum histórico de alterações foi registado para este documento.</p>
+        )}
+      </Modal>
 
     <Modal isOpen={isNewDocModalOpen} onClose={() => setIsNewDocModalOpen(false)} title="Criar Novo Documento">
       <div className="space-y-4">
