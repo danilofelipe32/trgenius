@@ -9,6 +9,7 @@ import Login from './components/Login';
 import { AttachmentManager } from './components/AttachmentManager';
 import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
+import { etpSections, trSections } from './config/sections';
 
 // --- Reusable Section Component ---
 interface SectionProps {
@@ -206,28 +207,6 @@ const App: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Sections definitions
-  const etpSections: SectionType[] = [
-    { id: 'etp-input-introducao', title: '1. Introdução', placeholder: 'Apresentação do objetivo da contratação, justificativa e contexto...', hasGen: true, hasRiskAnalysis: true, tooltip: "Conforme Art. 6º, XVII, da Lei 14.133/21, o ETP caracteriza o interesse público, a melhor solução e serve de base para o Termo de Referência. Descreva aqui o objetivo e o contexto da contratação." },
-    { id: 'etp-input-demanda', title: '2. Demanda', placeholder: 'Descrição detalhada da necessidade a ser atendida pela contratação...', hasGen: true, hasRiskAnalysis: true, tooltip: "Detalhe a necessidade da Administração que motiva esta contratação. Inclua a avaliação da demanda do público-alvo e a motivação técnico-econômico-social, como previsto no Art. 6º, XIX, a)." },
-    { id: 'etp-input-analise-demanda', title: '3. Análise da Demanda', placeholder: 'Avaliação da necessidade, incluindo levantamento de dados e informações relevantes...', hasGen: true, hasRiskAnalysis: true, tooltip: "Aprofunde a avaliação da necessidade, levantando dados e informações relevantes que justifiquem a contratação e seus quantitativos." },
-    { id: 'etp-input-levantamento-solucoes', title: '4. Levantamento de Soluções', placeholder: 'Identificação de possíveis soluções para atender à demanda...', hasGen: true, hasRiskAnalysis: true, tooltip: "Identifique e descreva as diferentes soluções de mercado (produtos, serviços, tecnologias) que podem atender à demanda apresentada." },
-    { id: 'etp-input-analise-solucoes', title: '5. Análise das Soluções', placeholder: 'Avaliação detalhada de cada solução identificada...', hasGen: true, hasRiskAnalysis: true, tooltip: "Avalie criticamente cada solução levantada, considerando aspectos técnicos, econômicos, de sustentabilidade e de viabilidade para a Administração." },
-    { id: 'etp-input-recomendacao', title: '6. Recomendação da Solução', placeholder: 'Indicação da solução mais adequada para a contratação...', hasGen: true, hasRiskAnalysis: true, tooltip: "Com base na análise, indique e justifique qual a solução mais vantajosa e adequada para a contratação, explicando os motivos da escolha." },
-    { id: 'etp-input-anexos', title: '7. Anexos', placeholder: 'Liste aqui referências a documentos complementares ou adicione notas sobre os ficheiros anexados...', hasGen: false, tooltip: "Inclua aqui referências a documentos complementares como pesquisas de mercado, planilhas de custos, cronogramas ou outros estudos relevantes.", isAttachmentSection: true }
-  ];
-
-  const trSections: SectionType[] = [
-    { id: 'tr-input-objeto', title: '1. Objeto da Contratação', placeholder: 'Ex: Aquisição de 50 notebooks, com garantia de 24 meses...', hasGen: true, hasRiskAnalysis: true, tooltip: "Conforme Art. 40, I, defina de forma precisa, suficiente e clara o que será contratado, incluindo natureza, quantitativos, prazo e, se houver, possibilidade de prorrogação." },
-    { id: 'tr-input-justificativa', title: '2. Justificativa e Quantitativos', placeholder: 'Ex: A contratação visa substituir equipamentos obsoletos...', hasGen: true, hasRiskAnalysis: true, tooltip: "Fundamente a necessidade da contratação, fazendo referência ao Estudo Técnico Preliminar (ETP) e justificando os quantitativos solicitados. (Art. 40, II)." },
-    { id: 'tr-input-execucao', title: '3. Condições de Execução e Garantia', placeholder: 'Ex: Entrega única em até 30 dias corridos...', hasGen: true, hasRiskAnalysis: true, tooltip: "Descreva o modelo de execução do objeto, detalhando como, onde e quando o serviço será prestado ou o bem será entregue, incluindo prazos e garantias. (Art. 40, V, c))." },
-    { id: 'tr-input-obrigacoes', title: '4. Obrigações das Partes', placeholder: 'Ex: Contratada: Fornecer bens novos... Contratante: Efetuar o pagamento...', hasGen: true, hasRiskAnalysis: true, tooltip: "Liste os deveres e responsabilidades tanto da empresa contratada quanto da Administração (contratante) durante a vigência do contrato. (Art. 40, V, f))." },
-    { id: 'tr-input-habilitacao', title: '5. Requisitos de Qualificação Técnica', placeholder: 'Ex: Apresentar Atestado de Capacidade Técnica...', hasGen: true, hasRiskAnalysis: true, tooltip: "Especifique os requisitos técnicos que a empresa licitante deve comprovar para demonstrar sua capacidade de executar o objeto do contrato. (Art. 40, V, d))." },
-    { id: 'tr-input-pagamento', title: '6. Modelo de Pagamento e Dotação', placeholder: 'Ex: Pagamento em parcela única, em até 30 dias...', hasGen: true, hasRiskAnalysis: true, tooltip: "Defina os critérios e o modelo de pagamento, incluindo prazos, condições e a dotação orçamentária que cobrirá a despesa. (Art. 40, V, e))." },
-    { id: 'tr-input-fiscalizacao', title: '7. Gestão e Fiscalização do Contrato', placeholder: 'Ex: A fiscalização será exercida por servidor(a) designado(a)...', hasGen: true, hasRiskAnalysis: true, tooltip: "Estabeleça os mecanismos de fiscalização e gestão do contrato, indicando os responsáveis e como será feito o acompanhamento da execução. (Art. 40, V, g))." },
-    { id: 'tr-input-sancoes', title: '8. Sanções Administrativas', placeholder: 'Ex: O descumprimento das cláusulas sujeitará a contratada...', hasGen: true, hasRiskAnalysis: true, tooltip: "Determine as sanções aplicáveis em caso de inadimplemento ou descumprimento das obrigações contratuais por parte da contratada. (Art. 40, V, h))." }
-  ];
-
   const priorityFilters: {
     key: 'all' | Priority;
     label: string;
