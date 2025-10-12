@@ -35,21 +35,38 @@ const getFileIcon = (mimeType: string): string => {
   return 'file-alt';
 };
 
+const TOTAL_SIZE_LIMIT_MB = 50;
+const TOTAL_SIZE_LIMIT_BYTES = TOTAL_SIZE_LIMIT_MB * 1024 * 1024;
+
 export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachments, onAttachmentsChange, onPreview, setMessage }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<Array<{ name: string; status: 'processing' | 'success' | 'error'; message?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFiles = useCallback(async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    
+    const fileList = Array.from(files);
+    setProcessingStatus(fileList.map(f => ({ name: f.name, status: 'processing' })));
 
     const newAttachments: Attachment[] = [];
     const existingNames = attachments.map(a => a.name);
+    let currentTotalSize = attachments.reduce((sum, a) => sum + a.size, 0);
 
-    for (const file of Array.from(files)) {
+    for (const file of fileList) {
       if (existingNames.includes(file.name)) {
-        setMessage({ title: 'Aviso', text: `O ficheiro "${file.name}" já foi anexado.` });
+        setProcessingStatus(prev => prev.map(p => p.name === file.name ? { ...p, status: 'error', message: 'Ficheiro duplicado.' } : p));
         continue;
       }
+      
+      if (currentTotalSize + file.size > TOTAL_SIZE_LIMIT_BYTES) {
+        const errorMessage = `Limite de ${TOTAL_SIZE_LIMIT_MB}MB excedido.`;
+        setProcessingStatus(prev => prev.map(p => p.name === file.name ? { ...p, status: 'error', message: errorMessage } : p));
+        setMessage({ title: 'Erro de Anexo', text: `Não foi possível adicionar "${file.name}". O tamanho total dos anexos excederia o limite de ${TOTAL_SIZE_LIMIT_MB}MB.` });
+        // Stop processing further files in this batch
+        break; 
+      }
+
       try {
         const base64Content = await fileToBase64(file);
         newAttachments.push({
@@ -58,8 +75,12 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
           size: file.size,
           content: base64Content,
         });
+        currentTotalSize += file.size; // Update total size after successful processing
+        setProcessingStatus(prev => prev.map(p => p.name === file.name ? { ...p, status: 'success' } : p));
       } catch (error) {
         console.error("Error converting file to base64", error);
+        const errorMessage = 'Falha na conversão.';
+        setProcessingStatus(prev => prev.map(p => p.name === file.name ? { ...p, status: 'error', message: errorMessage } : p));
         setMessage({ title: 'Erro', text: `Não foi possível processar o ficheiro "${file.name}".` });
       }
     }
@@ -67,6 +88,11 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
     if (newAttachments.length > 0) {
       onAttachmentsChange([...attachments, ...newAttachments]);
     }
+    
+    setTimeout(() => {
+        setProcessingStatus([]);
+    }, 5000); // Clear status after 5 seconds
+
   }, [attachments, onAttachmentsChange, setMessage]);
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
@@ -132,7 +158,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
         <p className="text-slate-600 text-center">
           <span className="font-semibold text-blue-600">Clique para carregar</span> ou arraste e solte
         </p>
-        <p className="text-xs text-slate-400 mt-1">PDF, DOCX, Imagens, etc.</p>
+        <p className="text-xs text-slate-400 mt-1">Limite total: {TOTAL_SIZE_LIMIT_MB}MB</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -143,9 +169,31 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
         />
       </div>
 
+      {processingStatus.length > 0 && (
+        <div className="mb-4 p-3 bg-slate-100 rounded-lg space-y-2">
+            <h4 className="text-xs font-bold text-slate-600">A processar ficheiros...</h4>
+            {processingStatus.map(file => (
+                <div key={file.name} className="flex items-center text-xs justify-between">
+                    <div className="flex items-center gap-2 truncate flex-1">
+                        {file.status === 'processing' && <Icon name="spinner" className="fa-spin text-slate-400 flex-shrink-0" />}
+                        {file.status === 'success' && <Icon name="check-circle" className="text-green-500 flex-shrink-0" />}
+                        {file.status === 'error' && <Icon name="exclamation-circle" className="text-red-500 flex-shrink-0" />}
+                        <span className="truncate">{file.name}</span>
+                    </div>
+                    {file.status === 'error' && <span className="ml-2 text-red-600 font-semibold flex-shrink-0">{file.message}</span>}
+                </div>
+            ))}
+        </div>
+      )}
+
       {attachments.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-600">Ficheiros Anexados:</h4>
+          <div className="flex justify-between items-center">
+            <h4 className="text-sm font-semibold text-slate-600">Ficheiros Anexados:</h4>
+            <span className="text-xs font-medium text-slate-500 bg-slate-200 px-2 py-1 rounded-full">
+                Total: {formatFileSize(attachments.reduce((sum, a) => sum + a.size, 0))} / {TOTAL_SIZE_LIMIT_MB}MB
+            </span>
+          </div>
           {attachments.map((file, index) => (
             <div key={index} className="flex items-center bg-slate-100 p-3 rounded-lg text-sm transition-all shadow-sm hover:shadow-md">
               <Icon name={getFileIcon(file.type)} className="text-xl text-slate-500 mr-4" />
