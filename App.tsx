@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
@@ -1203,8 +1204,13 @@ Solicitação do usuário: "${refinePrompt}"
                   </div>
                 </div>
                 <div className="flex-shrink-0 ml-4 flex items-center gap-2">
-                    {!isOnline && (
-                        <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full">
+                    {isOnline ? (
+                        <div className="flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full" title="A ligação à Internet está ativa.">
+                            <Icon name="wifi" />
+                            <span>Online</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full" title="Sem ligação à Internet. As funcionalidades online estão desativadas.">
                             <Icon name="wifi-slash" />
                             <span>Offline</span>
                         </div>
