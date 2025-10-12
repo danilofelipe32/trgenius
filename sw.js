@@ -65,40 +65,32 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Use a cache-first strategy for all other requests (assets, etc.)
+  // Use a stale-while-revalidate strategy for all other requests (assets).
+  // This provides a fast response from the cache while updating it in the background.
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-
-        // Clone the request because it's a stream and can only be consumed once.
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then(
-          (response) => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
-              return response;
-            }
-
-            // Clone the response because it's also a stream.
-            const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                // We don't cache chrome-extension URLs
-                if (!event.request.url.startsWith('chrome-extension://')) {
-                  cache.put(event.request, responseToCache);
-                }
-              });
-
-            return response;
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          // If the network request is successful, update the cache.
+          if (networkResponse && networkResponse.status === 200 && !event.request.url.startsWith('chrome-extension://')) {
+             cache.put(event.request, networkResponse.clone());
           }
-        );
-      })
+          return networkResponse;
+        }).catch(err => {
+            // If the network fails, we still have the cached response (if it exists).
+            console.warn(`Fetch failed for ${event.request.url}; returning cached response if available.`, err);
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            // If there's no cached response either, the error will propagate.
+            throw err;
+        });
+
+        // Return the cached response immediately if available (stale), 
+        // otherwise wait for the network response.
+        return cachedResponse || fetchPromise;
+      });
+    })
   );
 });
 

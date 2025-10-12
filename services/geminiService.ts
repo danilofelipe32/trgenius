@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
-// FIX: Per guidelines, API key must be from process.env.API_KEY.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Chave de API inserida diretamente para fins de teste, conforme solicitado.
+const ai = new GoogleGenAI({ apiKey: "AIzaSyB1SGptDVNzOh888rzlNSkXCiT5P2goNo0" });
 
 export async function callGemini(prompt: string): Promise<string> {
   try {
@@ -27,6 +27,9 @@ export async function callGemini(prompt: string): Promise<string> {
 
   } catch (error: any) {
     console.error("Erro ao chamar a API Gemini:", error);
+    if (error.message && error.message.includes('API key not valid')) {
+        return `Erro: A chave de API fornecida não é válida. Verifique se a chave está correta e se a API Generative Language está ativada no seu projeto Google Cloud.`;
+    }
     return `Erro: Falha na comunicação com a API. Verifique a sua ligação à Internet. Detalhes: ${error.message}`;
   }
 }
