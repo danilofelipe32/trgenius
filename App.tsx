@@ -161,12 +161,12 @@ const App: React.FC = () => {
   
   // Sections definitions
   const etpSections: SectionType[] = [
-    { id: 'etp-input-introducao', title: '1. Introdução', placeholder: 'Apresentação do objetivo da contratação, justificativa e contexto...', hasGen: true, tooltip: "Conforme Art. 6º, XVII, da Lei 14.133/21, o ETP caracteriza o interesse público, a melhor solução e serve de base para o Termo de Referência. Descreva aqui o objetivo e o contexto da contratação." },
-    { id: 'etp-input-demanda', title: '2. Demanda', placeholder: 'Descrição detalhada da necessidade a ser atendida pela contratação...', hasGen: true, tooltip: "Detalhe a necessidade da Administração que motiva esta contratação. Inclua a avaliação da demanda do público-alvo e a motivação técnico-econômico-social, como previsto no Art. 6º, XIX, a)." },
-    { id: 'etp-input-analise-demanda', title: '3. Análise da Demanda', placeholder: 'Avaliação da necessidade, incluindo levantamento de dados e informações relevantes...', hasGen: true, tooltip: "Aprofunde a avaliação da necessidade, levantando dados e informações relevantes que justifiquem a contratação e seus quantitativos." },
-    { id: 'etp-input-levantamento-solucoes', title: '4. Levantamento de Soluções', placeholder: 'Identificação de possíveis soluções para atender à demanda...', hasGen: true, tooltip: "Identifique e descreva as diferentes soluções de mercado (produtos, serviços, tecnologias) que podem atender à demanda apresentada." },
-    { id: 'etp-input-analise-solucoes', title: '5. Análise das Soluções', placeholder: 'Avaliação detalhada de cada solução identificada...', hasGen: true, tooltip: "Avalie criticamente cada solução levantada, considerando aspectos técnicos, econômicos, de sustentabilidade e de viabilidade para a Administração." },
-    { id: 'etp-input-recomendacao', title: '6. Recomendação da Solução', placeholder: 'Indicação da solução mais adequada para a contratação...', hasGen: true, tooltip: "Com base na análise, indique e justifique qual a solução mais vantajosa e adequada para a contratação, explicando os motivos da escolha." },
+    { id: 'etp-input-introducao', title: '1. Introdução', placeholder: 'Apresentação do objetivo da contratação, justificativa e contexto...', hasGen: true, hasRiskAnalysis: true, tooltip: "Conforme Art. 6º, XVII, da Lei 14.133/21, o ETP caracteriza o interesse público, a melhor solução e serve de base para o Termo de Referência. Descreva aqui o objetivo e o contexto da contratação." },
+    { id: 'etp-input-demanda', title: '2. Demanda', placeholder: 'Descrição detalhada da necessidade a ser atendida pela contratação...', hasGen: true, hasRiskAnalysis: true, tooltip: "Detalhe a necessidade da Administração que motiva esta contratação. Inclua a avaliação da demanda do público-alvo e a motivação técnico-econômico-social, como previsto no Art. 6º, XIX, a)." },
+    { id: 'etp-input-analise-demanda', title: '3. Análise da Demanda', placeholder: 'Avaliação da necessidade, incluindo levantamento de dados e informações relevantes...', hasGen: true, hasRiskAnalysis: true, tooltip: "Aprofunde a avaliação da necessidade, levantando dados e informações relevantes que justifiquem a contratação e seus quantitativos." },
+    { id: 'etp-input-levantamento-solucoes', title: '4. Levantamento de Soluções', placeholder: 'Identificação de possíveis soluções para atender à demanda...', hasGen: true, hasRiskAnalysis: true, tooltip: "Identifique e descreva as diferentes soluções de mercado (produtos, serviços, tecnologias) que podem atender à demanda apresentada." },
+    { id: 'etp-input-analise-solucoes', title: '5. Análise das Soluções', placeholder: 'Avaliação detalhada de cada solução identificada...', hasGen: true, hasRiskAnalysis: true, tooltip: "Avalie criticamente cada solução levantada, considerando aspectos técnicos, econômicos, de sustentabilidade e de viabilidade para a Administração." },
+    { id: 'etp-input-recomendacao', title: '6. Recomendação da Solução', placeholder: 'Indicação da solução mais adequada para a contratação...', hasGen: true, hasRiskAnalysis: true, tooltip: "Com base na análise, indique e justifique qual a solução mais vantajosa e adequada para a contratação, explicando os motivos da escolha." },
     { id: 'etp-input-anexos', title: '7. Anexos', placeholder: 'Liste aqui referências a documentos complementares ou adicione notas sobre os ficheiros anexados...', hasGen: false, tooltip: "Inclua aqui referências a documentos complementares como pesquisas de mercado, planilhas de custos, cronogramas ou outros estudos relevantes.", isAttachmentSection: true }
   ];
 
@@ -500,7 +500,8 @@ const App: React.FC = () => {
   };
 
   const handleRenameDocument = () => {
-    if (!editingDoc || !editingDocName.trim()) {
+    // FIX: Add a type check for editingDocName to resolve an 'unknown' type error before calling .trim().
+    if (!editingDoc || typeof editingDocName !== 'string' || !editingDocName.trim()) {
         setEditingDoc(null); // Cancel edit if name is empty
         return;
     }
@@ -606,12 +607,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRiskAnalysis = async (sectionId: string, title: string) => {
-    if (!loadedEtpForTr) {
-        setMessage({ title: 'Aviso', text: 'Por favor, carregue um ETP para usar como contexto para a análise de riscos.' });
-        return;
-    }
-    const sectionContent = trSectionsContent[sectionId];
+  const handleRiskAnalysis = async (docType: DocumentType, sectionId: string, title: string) => {
+    const currentSections = docType === 'etp' ? etpSectionsContent : trSectionsContent;
+    const sectionContent = currentSections[sectionId];
+
     if (!sectionContent || sectionContent.trim() === '') {
         setMessage({ title: 'Aviso', text: `Por favor, preencha ou gere o conteúdo da seção "${title}" antes de realizar a análise de riscos.` });
         return;
@@ -620,17 +619,26 @@ const App: React.FC = () => {
     setAnalysisContent({ title: `Analisando Riscos para: ${title}`, content: 'A IA está a pensar... por favor, aguarde.' });
 
     const ragContext = getRagContext();
-    const etpContext = `--- INÍCIO DO ETP ---\n${loadedEtpForTr.content}\n--- FIM DO ETP ---`;
+    let primaryContext = '';
+    
+    if (docType === 'tr' && loadedEtpForTr) {
+        primaryContext = `--- INÍCIO DO ETP DE CONTEXTO ---\n${loadedEtpForTr.content}\n--- FIM DO ETP DE CONTEXTO ---`;
+    } else if (docType === 'etp') {
+        primaryContext = Object.entries(currentSections)
+            .filter(([key, value]) => key !== sectionId && value)
+            .map(([key, value]) => `Contexto Adicional (${etpSections.find(s => s.id === key)?.title}): ${value.trim()}`)
+            .join('\n');
+    }
 
-    const prompt = `Você é um especialista em gestão de riscos em contratações públicas no Brasil. Sua tarefa é analisar a seção "${title}" de um Termo de Referência (TR) e identificar potenciais riscos.
+    const prompt = `Você é um especialista em gestão de riscos em contratações públicas no Brasil. Sua tarefa é analisar a seção "${title}" de um ${docType.toUpperCase()} e identificar potenciais riscos.
 
-Use o ETP e os documentos de apoio como contexto.
+Use o contexto do documento e os documentos de apoio fornecidos.
 
 **Seção a ser analisada:**
 ${sectionContent}
 
-**Contexto (ETP e Documentos):**
-${etpContext}
+**Contexto Adicional (Outras seções, ETP, etc.):**
+${primaryContext}
 ${ragContext}
 
 **Sua Tarefa:**
@@ -1098,6 +1106,8 @@ Solicitação do usuário: "${refinePrompt}"
                         onChange={(id, value) => handleSectionChange('etp', id, value)}
                         onGenerate={() => handleGenerate('etp', section.id, section.title)}
                         hasGen={section.hasGen}
+                        onAnalyze={() => handleRiskAnalysis('etp', section.id, section.title)}
+                        hasRiskAnalysis={section.hasRiskAnalysis}
                         isLoading={loadingSection === section.id}
                         onEdit={() => handleOpenEditModal('etp', section.id, section.title)}
                         hasError={validationErrors.has(section.id)}
@@ -1149,7 +1159,7 @@ Solicitação do usuário: "${refinePrompt}"
                         onGenerate={() => handleGenerate('tr', section.id, section.title)}
                         hasGen={section.hasGen}
                         isLoading={loadingSection === section.id}
-                        onAnalyze={() => handleRiskAnalysis(section.id, section.title)}
+                        onAnalyze={() => handleRiskAnalysis('tr', section.id, section.title)}
                         hasRiskAnalysis={section.hasRiskAnalysis}
                         onEdit={() => handleOpenEditModal('tr', section.id, section.title)}
                         hasError={validationErrors.has(section.id)}
