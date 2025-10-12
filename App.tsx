@@ -1351,9 +1351,12 @@ Solicitação do usuário: "${refinePrompt}"
                 <button
                   onClick={handleRefineText}
                   disabled={!refinePrompt || isRefining}
-                  className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                  className="bg-purple-600 text-white font-bold py-2 px-3 md:px-4 rounded-lg hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 flex items-center justify-center"
                 >
-                  <Icon name="wand-magic-sparkles" className="mr-2" /> {isRefining ? 'A refinar...' : 'Assim mas...'}
+                  <Icon name="wand-magic-sparkles" className="md:mr-2" />
+                  <span className="hidden md:inline">
+                    {isRefining ? 'A refinar...' : 'Assim mas...'}
+                  </span>
                 </button>
               </div>
             </div>
