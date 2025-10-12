@@ -1,6 +1,8 @@
 
 
 
+
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
@@ -203,6 +205,7 @@ const App: React.FC = () => {
 
   // Filter state
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Sections definitions
   const etpSections: SectionType[] = [
@@ -949,8 +952,14 @@ Solicitação do usuário: "${refinePrompt}"
     return <Login onLogin={handleLogin} />;
   }
   
-  const filteredETPs = savedETPs.filter(etp => priorityFilter === 'all' || etp.priority === priorityFilter);
-  const filteredTRs = savedTRs.filter(tr => priorityFilter === 'all' || tr.priority === priorityFilter);
+  const filteredETPs = savedETPs.filter(etp =>
+    (priorityFilter === 'all' || etp.priority === priorityFilter) &&
+    etp.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredTRs = savedTRs.filter(tr =>
+    (priorityFilter === 'all' || tr.priority === priorityFilter) &&
+    tr.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
@@ -979,6 +988,21 @@ Solicitação do usuário: "${refinePrompt}"
             </p>
             
             <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
+                <div className="py-2">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Busca Rápida</h3>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filtrar por nome..."
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                            aria-label="Filtrar documentos por nome"
+                        />
+                        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                </div>
+
                 <div className="py-2">
                     <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Filtro de Prioridade</h3>
                     <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1 gap-1">
