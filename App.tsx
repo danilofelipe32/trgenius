@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment } from './types';
 import * as storage from './services/storageService';
@@ -34,7 +35,8 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
             {tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={tooltip} />}
         </div>
         <div className="flex items-center gap-2">
-           {value && value.trim().length > 0 && onEdit && (
+           {/* FIX: Safely call .trim() by ensuring value is a string. */}
+           {value && String(value || '').trim().length > 0 && onEdit && (
              <button
               onClick={onEdit}
               className="px-3 py-1 text-xs font-semibold text-green-600 bg-green-100 rounded-md hover:bg-green-200 transition-colors"
@@ -410,7 +412,8 @@ const App: React.FC = () => {
     const fieldsToValidate = requiredFields[docType] || [];
 
     fieldsToValidate.forEach(field => {
-        if (!sections[field.id] || sections[field.id].trim() === '') {
+        // FIX: Safely call .trim() by ensuring the value from sections is treated as a string.
+        if (!sections[field.id] || String(sections[field.id] || '').trim() === '') {
             errors.push(`O campo "${field.name}" é obrigatório.`);
             errorFields.add(field.id);
         }
@@ -618,7 +621,7 @@ const App: React.FC = () => {
     const currentSections = docType === 'etp' ? etpSectionsContent : trSectionsContent;
     const sectionContent = currentSections[sectionId];
 
-    if (!sectionContent || sectionContent.trim() === '') {
+    if (!sectionContent || String(sectionContent || '').trim() === '') {
         setMessage({ title: 'Aviso', text: `Por favor, preencha ou gere o conteúdo da seção "${title}" antes de realizar a análise de riscos.` });
         return;
     }
@@ -635,8 +638,10 @@ const App: React.FC = () => {
         }
 
         const trOtherSectionsContext = Object.entries(currentSections)
-            .filter(([key, value]) => key !== sectionId && value && value.trim())
-            .map(([key, value]) => `Contexto da Seção do TR (${trSections.find(s => s.id === key)?.title}):\n${value.trim()}`)
+            // FIX: Safely call .trim() by ensuring value is a string.
+            .filter(([key, value]) => key !== sectionId && value && String(value || '').trim())
+            // FIX: Safely call .trim() by ensuring value is a string.
+            .map(([key, value]) => `Contexto da Seção do TR (${trSections.find(s => s.id === key)?.title}):\n${String(value || '').trim()}`)
             .join('\n\n');
         
         primaryContext = `${etpContext}${trOtherSectionsContext}`;
@@ -644,7 +649,8 @@ const App: React.FC = () => {
     } else if (docType === 'etp') {
         primaryContext = Object.entries(currentSections)
             .filter(([key, value]) => key !== sectionId && value)
-            .map(([key, value]) => `Contexto Adicional (${etpSections.find(s => s.id === key)?.title}): ${value.trim()}`)
+            // FIX: Safely call .trim() by ensuring value is a string.
+            .map(([key, value]) => `Contexto Adicional (${etpSections.find(s => s.id === key)?.title}): ${String(value || '').trim()}`)
             .join('\n');
     }
 
@@ -775,7 +781,8 @@ Solicitação do usuário: "${refinePrompt}"
         <div className="space-y-8">
           {allSections.map(section => {
             const content = doc.sections[section.id];
-            if (content && content.trim()) {
+            // FIX: Safely call .trim() by ensuring content is a string.
+            if (content && String(content || '').trim()) {
               return (
                 <div key={section.id}>
                   <h2 className="text-xl font-bold text-slate-700 mb-3">{section.title}</h2>
@@ -863,6 +870,28 @@ Solicitação do usuário: "${refinePrompt}"
         }
         setInstallPrompt(null);
     });
+  };
+
+  const handleExportHistory = () => {
+    if (!historyModalContent || !historyModalContent.historico || historyModalContent.historico.length === 0) {
+      setMessage({ title: 'Aviso', text: 'Não há histórico para exportar.' });
+      return;
+    }
+
+    const docName = historyModalContent.name;
+    const historyText = `Histórico de Alterações para o Documento: ${docName}\n\n` +
+                        `===================================================\n\n` +
+                        historyModalContent.historico.join('\n');
+
+    const blob = new Blob([historyText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `historico_${docName.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   if (!isAuthenticated) {
@@ -1322,6 +1351,17 @@ Solicitação do usuário: "${refinePrompt}"
         onClose={() => setHistoryModalContent(null)} 
         title={`Histórico de: ${historyModalContent?.name}`}
         maxWidth="max-w-2xl"
+        footer={
+          <div className="flex justify-end">
+            <button
+              onClick={handleExportHistory}
+              disabled={!historyModalContent?.historico || historyModalContent.historico.length === 0}
+              className="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Icon name="file-export" className="mr-2" /> Exportar Histórico (.txt)
+            </button>
+          </div>
+        }
       >
         {historyModalContent?.historico && historyModalContent.historico.length > 0 ? (
           <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
