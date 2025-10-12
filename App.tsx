@@ -1278,7 +1278,7 @@ Solicitação do usuário: "${refinePrompt}"
             </div>
           </aside>
           
-          <main className="flex-1 p-6 md:p-10 overflow-y-auto" onClick={() => { if(window.innerWidth < 768) setIsSidebarOpen(false) }}>
+          <main className="flex-1 p-6 pb-28 md:p-10 overflow-y-auto" onClick={() => { if(window.innerWidth < 768) setIsSidebarOpen(false) }}>
              <header className="flex justify-between items-center mb-8">
                 <div className="w-full">
                   <div className="border-b border-slate-200">
@@ -1368,14 +1368,16 @@ Solicitação do usuário: "${refinePrompt}"
                     />
                   );
                 })}
-                <div className="flex justify-end items-center mt-6 gap-3">
-                    <span className="text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
-                    <button onClick={handleClearForm('etp')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">
-                        <Icon name="eraser" className="mr-2" /> Limpar Formulário
-                    </button>
-                    <button onClick={() => handleSaveDocument('etp')} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md">
-                        <Icon name="save" className="mr-2" /> Salvar ETP
-                    </button>
+                <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-slate-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-6" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                    <div className="flex items-center gap-3">
+                        <span className="hidden md:block text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
+                        <button onClick={handleClearForm('etp')} className="flex-1 md:flex-initial bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors flex items-center justify-center gap-2">
+                            <Icon name="eraser" /> Limpar Formulário
+                        </button>
+                        <button onClick={() => handleSaveDocument('etp')} className="flex-1 md:flex-initial bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                            <Icon name="save" /> Salvar ETP
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1419,14 +1421,16 @@ Solicitação do usuário: "${refinePrompt}"
                         tooltip={section.tooltip}
                     />
                 ))}
-                <div className="flex justify-end items-center mt-6 gap-3">
-                    <span className="text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
-                    <button onClick={handleClearForm('tr')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">
-                        <Icon name="eraser" className="mr-2" /> Limpar Formulário
-                    </button>
-                    <button onClick={() => handleSaveDocument('tr')} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md">
-                        <Icon name="save" className="mr-2" /> Salvar TR
-                    </button>
+                <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-slate-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-6" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                    <div className="flex items-center gap-3">
+                        <span className="hidden md:block text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
+                        <button onClick={handleClearForm('tr')} className="flex-1 md:flex-initial bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors flex items-center justify-center gap-2">
+                            <Icon name="eraser" /> Limpar Formulário
+                        </button>
+                        <button onClick={() => handleSaveDocument('tr')} className="flex-1 md:flex-initial bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                            <Icon name="save" /> Salvar TR
+                        </button>
+                    </div>
                 </div>
             </div>
 
