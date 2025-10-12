@@ -1,7 +1,7 @@
 {
   "name": "TR Genius PWA",
   "short_name": "TR Genius",
-  "description": "AI assistant for Brazilian public bidding documents.",
+  "description": "Assistente de IA para criar Estudos Técnicos Preliminares e Termos de Referência, alinhado à Lei de Licitações 14.133/21.",
   "start_url": "./index.html",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
