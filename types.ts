@@ -19,13 +19,20 @@ export interface Attachment {
   content: string; // base64 encoded content
 }
 
+export interface DocumentVersion {
+  timestamp: string;
+  summary: string;
+  sections: DocumentSection;
+  attachments?: Attachment[];
+}
+
 export interface SavedDocument {
   id: number;
   name: string;
   createdAt: string;
   sections: DocumentSection;
   attachments?: Attachment[];
-  historico?: string[];
+  history?: DocumentVersion[];
 }
 
 export type DocumentType = 'etp' | 'tr';

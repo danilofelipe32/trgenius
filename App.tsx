@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment } from './types';
+import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
 import { processSingleUploadedFile, chunkText } from './services/ragService';
@@ -9,6 +9,7 @@ import { Icon } from './components/Icon';
 import Login from './components/Login';
 import { AttachmentManager } from './components/AttachmentManager';
 import InstallPWA from './components/InstallPWA';
+import { HistoryViewer } from './components/HistoryViewer';
 
 // --- Reusable Section Component ---
 interface SectionProps {
@@ -464,6 +465,7 @@ const App: React.FC = () => {
         createdAt: new Date().toISOString(),
         sections: { ...sections },
         attachments: etpAttachments,
+        history: [],
       };
       const updatedETPs = [...savedETPs, newDoc];
       setSavedETPs(updatedETPs);
@@ -476,7 +478,8 @@ const App: React.FC = () => {
         id: Date.now(),
         name,
         createdAt: new Date().toISOString(),
-        sections: { ...sections }
+        sections: { ...sections },
+        history: [],
       };
       const updatedTRs = [...savedTRs, newDoc];
       setSavedTRs(updatedTRs);
@@ -896,29 +899,6 @@ Solicitação do usuário: "${refinePrompt}"
   const handleDismissInstallBanner = () => {
     sessionStorage.setItem('pwaInstallDismissed', 'true');
     setIsInstallBannerVisible(false);
-  };
-
-  const handleExportHistory = () => {
-    if (!historyModalContent || !historyModalContent.historico || historyModalContent.historico.length === 0) {
-      setMessage({ title: 'Aviso', text: 'Não há histórico para exportar.' });
-      return;
-    }
-
-    const docName = historyModalContent.name;
-    const historyText = `Histórico de Alterações para o Documento: ${docName}\n\n` +
-                        `===================================================\n\n` +
-                        historyModalContent.historico.join('\n');
-
-    // FIX: Replaced undefined variable `text` with `historyText` to correctly create the Blob for export.
-    const blob = new Blob([historyText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `historico_${docName.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   if (!isAuthenticated) {
@@ -1409,31 +1389,9 @@ Solicitação do usuário: "${refinePrompt}"
         isOpen={!!historyModalContent} 
         onClose={() => setHistoryModalContent(null)} 
         title={`Histórico de: ${historyModalContent?.name}`}
-        maxWidth="max-w-2xl"
-        footer={
-          <div className="flex justify-end">
-            <button
-              onClick={handleExportHistory}
-              disabled={!historyModalContent?.historico || historyModalContent.historico.length === 0}
-              className="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Icon name="file-export" className="mr-2" /> Exportar Histórico (.txt)
-            </button>
-          </div>
-        }
+        maxWidth="max-w-6xl"
       >
-        {historyModalContent?.historico && historyModalContent.historico.length > 0 ? (
-          <ul className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-            {historyModalContent.historico.map((entry, index) => (
-              <li key={index} className="flex items-start text-sm p-2 bg-slate-50 rounded-md">
-                <Icon name="clock" className="text-slate-400 mt-1 mr-3" />
-                <span className="text-slate-700">{entry}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-slate-500">Nenhum histórico de alterações foi registado para este documento.</p>
-        )}
+        {historyModalContent && <HistoryViewer document={historyModalContent} allSections={[...etpSections, ...trSections]} />}
       </Modal>
 
     <Modal isOpen={isNewDocModalOpen} onClose={() => setIsNewDocModalOpen(false)} title="Criar Novo Documento">

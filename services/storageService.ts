@@ -1,4 +1,4 @@
-import { SavedDocument, UploadedFile } from '../types';
+import { SavedDocument, UploadedFile, DocumentVersion } from '../types';
 
 const ETP_STORAGE_KEY = 'savedETPs';
 const TR_STORAGE_KEY = 'savedTRs';
@@ -13,16 +13,21 @@ const getSavedDocuments = (key: string): SavedDocument[] => {
 const saveDocuments = (key: string, docs: SavedDocument[]): void => {
   const oldDocs = getSavedDocuments(key);
   const oldDocsMap = new Map(oldDocs.map(d => [d.id, d]));
+  const timestamp = new Date().toISOString();
 
   const updatedDocs = docs.map(newDoc => {
     const oldDoc = oldDocsMap.get(newDoc.id);
-    const timestamp = `[${new Date().toLocaleString('pt-BR')}]`;
 
     if (!oldDoc) {
-      // It's a new document
+      // It's a brand new document
       return {
         ...newDoc,
-        historico: [`${timestamp} Documento criado.`]
+        history: [{
+          timestamp: timestamp,
+          summary: 'Documento criado.',
+          sections: newDoc.sections,
+          attachments: newDoc.attachments
+        }]
       };
     }
 
@@ -31,7 +36,6 @@ const saveDocuments = (key: string, docs: SavedDocument[]): void => {
     if (newDoc.name !== oldDoc.name) {
       changes.push(`nome alterado de "${oldDoc.name}" para "${newDoc.name}"`);
     }
-    // Deep comparison is expensive, but necessary here. Stringify is a simple way.
     if (JSON.stringify(newDoc.sections) !== JSON.stringify(oldDoc.sections)) {
       changes.push('conteúdo das seções modificado');
     }
@@ -41,19 +45,35 @@ const saveDocuments = (key: string, docs: SavedDocument[]): void => {
 
     if (changes.length > 0) {
       const summary = `Alteração: ${changes.join(', ')}.`;
-      const newHistoryEntry = `${timestamp} ${summary}`;
-      const existingHistory = oldDoc.historico || [];
+      
+      // Create a snapshot of the *old* state before updating
+      const newHistoryEntry: DocumentVersion = {
+        timestamp: oldDoc.history?.[0]?.timestamp || oldDoc.createdAt, // Use timestamp of the previous version
+        summary: oldDoc.history?.[0]?.summary || 'Versão inicial.',
+        sections: oldDoc.sections,
+        attachments: oldDoc.attachments,
+      };
+
+      const existingHistory = oldDoc.history || [];
+      
+      // The new history will contain the latest change summary first
+      const updatedHistory = [{
+          timestamp: timestamp,
+          summary: summary,
+          sections: newDoc.sections,
+          attachments: newDoc.attachments
+        }, 
+        ...existingHistory
+      ];
+      
       return {
         ...newDoc,
-        historico: [newHistoryEntry, ...existingHistory]
+        history: updatedHistory
       };
     }
 
-    // No changes detected, just return the doc with its old history
-    return {
-      ...newDoc,
-      historico: oldDoc.historico || []
-    };
+    // No changes detected, just return the doc as is
+    return oldDoc;
   });
 
 
