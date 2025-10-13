@@ -1348,18 +1348,15 @@ Solicitação do usuário: "${refinePrompt}"
                       {uploadedFiles.map((file, index) => {
                           if (file.isCore) {
                             return (
-                                <div key={index} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200">
-                                    <label className="flex items-center gap-2 text-sm font-medium text-slate-800 truncate cursor-not-allowed">
-                                        <input
-                                            type="checkbox"
-                                            checked={true}
-                                            disabled={true}
-                                            className="form-checkbox h-4 w-4 text-blue-600 rounded"
-                                        />
-                                        <span className="truncate">{file.name}</span>
-                                    </label>
+                                <div key={index} className="flex items-center justify-between bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-slate-800 truncate cursor-not-allowed">
+                                        <div className="w-4 h-4 bg-slate-200 rounded-sm flex items-center justify-center flex-shrink-0" title="Sempre ativo">
+                                            <Icon name="check" className="text-slate-400 text-xs" />
+                                        </div>
+                                        <span className="truncate" title={file.name}>{file.name}</span>
+                                    </div>
                                     <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
-                                        <Icon name="lock" className="text-slate-400" title="Base de Conhecimento Principal (Sempre ativa)" />
+                                        <Icon name="lock" className="text-slate-400" title="Base de Conhecimento Principal (Não pode ser removida)" />
                                     </div>
                                 </div>
                             );
