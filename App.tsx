@@ -601,6 +601,16 @@ const App: React.FC = () => {
     setEditingDoc(null);
   };
 
+  const handleEditorBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    // When focus moves from an element inside the div to another element inside the same div,
+    // relatedTarget will be one of the children.
+    // If focus moves outside the div, relatedTarget will be null or an element outside the div.
+    // `contains` will correctly handle both cases.
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      handleUpdateDocumentDetails();
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -1218,12 +1228,11 @@ Solicitação do usuário: "${refinePrompt}"
                           {displayedETPs.map(etp => (
                             <li key={etp.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
                               {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
-                                  <div className="w-full">
+                                  <div className="w-full" onBlur={handleEditorBlur}>
                                       <input
                                           type="text"
                                           value={editingDoc.name}
                                           onChange={(e) => setEditingDoc({ ...editingDoc, name: e.target.value })}
-                                          onBlur={handleUpdateDocumentDetails}
                                           onKeyDown={(e) => {
                                               if (e.key === 'Enter') handleUpdateDocumentDetails();
                                               if (e.key === 'Escape') setEditingDoc(null);
@@ -1234,7 +1243,6 @@ Solicitação do usuário: "${refinePrompt}"
                                       <select
                                           value={editingDoc.priority}
                                           onChange={(e) => setEditingDoc(prev => prev ? { ...prev, priority: e.target.value as Priority } : null)}
-                                          onBlur={handleUpdateDocumentDetails}
                                           className="w-full mt-2 p-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
                                       >
                                           <option value="high">{priorityLabels.high}</option>
@@ -1286,12 +1294,11 @@ Solicitação do usuário: "${refinePrompt}"
                           {displayedTRs.map(tr => (
                             <li key={tr.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
                                {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
-                                  <div className="w-full">
+                                  <div className="w-full" onBlur={handleEditorBlur}>
                                       <input
                                           type="text"
                                           value={editingDoc.name}
                                           onChange={(e) => setEditingDoc({ ...editingDoc, name: e.target.value })}
-                                          onBlur={handleUpdateDocumentDetails}
                                           onKeyDown={(e) => {
                                               if (e.key === 'Enter') handleUpdateDocumentDetails();
                                               if (e.key === 'Escape') setEditingDoc(null);
@@ -1302,7 +1309,6 @@ Solicitação do usuário: "${refinePrompt}"
                                       <select
                                           value={editingDoc.priority}
                                           onChange={(e) => setEditingDoc(prev => prev ? { ...prev, priority: e.target.value as Priority } : null)}
-                                          onBlur={handleUpdateDocumentDetails}
                                           className="w-full mt-2 p-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
                                       >
                                           <option value="high">{priorityLabels.high}</option>
