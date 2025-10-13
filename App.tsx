@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
@@ -1273,12 +1274,12 @@ Solicitação do usuário: "${refinePrompt}"
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900">TR Genius</h1>
                 </div>
-                <button 
+                <button
                     onClick={handleShare}
-                    className="w-10 h-10 flex items-center justify-center text-slate-500 bg-slate-100 rounded-lg hover:bg-slate-200 hover:text-blue-600 transition-colors"
+                    className="w-9 h-9 flex items-center justify-center text-slate-400 rounded-full hover:bg-slate-100 hover:text-blue-600 transition-colors"
                     title="Partilhar Aplicação"
                 >
-                    <Icon name="share-alt" />
+                    <Icon name="share-nodes" />
                 </button>
             </div>
             <p className="text-slate-500 text-sm mb-4 leading-relaxed">
