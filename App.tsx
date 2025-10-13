@@ -888,19 +888,23 @@ Solicitação do usuário: "${refinePrompt}"
         setSummaryState({ loading: false, content: 'O documento está vazio e não pode ser resumido.' });
         return;
       }
+      
+      const ragContext = getRagContext();
 
-      const prompt = `Você é um assistente especializado em analisar documentos de licitações públicas. Sua tarefa é criar um resumo executivo do documento a seguir.
+      const prompt = `Você é um assistente especializado em analisar documentos de licitações públicas. Sua tarefa é criar um resumo executivo do "Documento Principal" a seguir. Utilize os "Documentos de Apoio (RAG)" como contexto para entender melhor o tema.
 
-      O resumo deve ser conciso e destacar os seguintes pontos:
+      O resumo deve ser conciso, focar APENAS nas informações do "Documento Principal" e destacar os seguintes pontos:
       1.  O objetivo principal da contratação.
       2.  Os elementos ou requisitos mais importantes.
       3.  A conclusão ou solução recomendada.
 
       Seja direto e claro. O resumo não deve exceder 200 palavras.
 
-      --- INÍCIO DO DOCUMENTO ---
+      --- INÍCIO DO DOCUMENTO PRINCIPAL ---
       ${documentText}
-      --- FIM DO DOCUMENTO ---
+      --- FIM DO DOCUMENTO PRINCIPAL ---
+      
+      ${ragContext}
 
       --- RESUMO EXECUTIVO ---`;
 
