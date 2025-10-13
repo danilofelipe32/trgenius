@@ -496,12 +496,14 @@ const App: React.FC = () => {
     }
 
     const name = `${docType.toUpperCase()} ${new Date().toLocaleString('pt-BR').replace(/[/:,]/g, '_')}`;
+    const now = new Date().toISOString();
     
     if (docType === 'etp') {
       const newDoc: SavedDocument = {
         id: Date.now(),
         name,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
         sections: { ...sections },
         attachments: etpAttachments,
         history: [],
@@ -517,7 +519,8 @@ const App: React.FC = () => {
       const newDoc: SavedDocument = {
         id: Date.now(),
         name,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
         sections: { ...sections },
         attachments: trAttachments,
         history: [],
@@ -853,8 +856,13 @@ Solicitação do usuário: "${refinePrompt}"
     return (
       <div>
         <div className="pb-4 border-b border-slate-200 mb-6">
-          <h1 className="text-3xl font-extrabold text-slate-800 leading-tight">{doc.name}</h1>
-          <p className="text-sm text-slate-500 mt-1">Criado em: {new Date(doc.createdAt).toLocaleString('pt-BR')}</p>
+            <h1 className="text-3xl font-extrabold text-slate-800 leading-tight">{doc.name}</h1>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 mt-2">
+                <span><Icon name="calendar-plus" className="mr-1.5" /> Criado em: {new Date(doc.createdAt).toLocaleString('pt-BR')}</span>
+                {doc.updatedAt && doc.updatedAt !== doc.createdAt && (
+                <span><Icon name="calendar-check" className="mr-1.5" /> Última modif.: {new Date(doc.updatedAt).toLocaleString('pt-BR')}</span>
+                )}
+            </div>
         </div>
         
         <div className="space-y-8">
@@ -1079,7 +1087,7 @@ Solicitação do usuário: "${refinePrompt}"
                       {filteredETPs.length > 0 ? (
                         <ul className="space-y-2">
                           {filteredETPs.map(etp => (
-                            <li key={etp.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                            <li key={etp.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
                               {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
                                   <div className="w-full">
                                       <input
@@ -1106,10 +1114,17 @@ Solicitação do usuário: "${refinePrompt}"
                                       </select>
                                   </div>
                               ) : (
-                                  <div className="flex items-center gap-2 truncate">
-                                    <PriorityIndicator priority={etp.priority} />
-                                    <span className="text-sm font-medium text-slate-700 truncate">{etp.name}</span>
-                                  </div>
+                                <div className="flex-grow truncate mr-2">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <PriorityIndicator priority={etp.priority} />
+                                        <span className="text-sm font-medium text-slate-700 truncate" title={etp.name}>{etp.name}</span>
+                                    </div>
+                                    {etp.updatedAt && (
+                                        <p className="text-xs text-slate-400 mt-1 pl-5" title={`Criado em: ${new Date(etp.createdAt).toLocaleString('pt-BR')}`}>
+                                            Modif.: {new Date(etp.updatedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    )}
+                                </div>
                               )}
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
@@ -1137,7 +1152,7 @@ Solicitação do usuário: "${refinePrompt}"
                       {filteredTRs.length > 0 ? (
                         <ul className="space-y-2">
                           {filteredTRs.map(tr => (
-                            <li key={tr.id} className="group flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                            <li key={tr.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
                                {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
                                   <div className="w-full">
                                       <input
@@ -1164,10 +1179,17 @@ Solicitação do usuário: "${refinePrompt}"
                                       </select>
                                   </div>
                               ) : (
-                                  <div className="flex items-center gap-2 truncate">
-                                    <PriorityIndicator priority={tr.priority} />
-                                    <span className="text-sm font-medium text-slate-700 truncate">{tr.name}</span>
-                                  </div>
+                                <div className="flex-grow truncate mr-2">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <PriorityIndicator priority={tr.priority} />
+                                        <span className="text-sm font-medium text-slate-700 truncate" title={tr.name}>{tr.name}</span>
+                                    </div>
+                                    {tr.updatedAt && (
+                                        <p className="text-xs text-slate-400 mt-1 pl-5" title={`Criado em: ${new Date(tr.createdAt).toLocaleString('pt-BR')}`}>
+                                            Modif.: {new Date(tr.updatedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    )}
+                                </div>
                               )}
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                 <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>

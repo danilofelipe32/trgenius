@@ -32,6 +32,7 @@ export interface SavedDocument {
   id: number;
   name: string;
   createdAt: string;
+  updatedAt: string;
   sections: DocumentSection;
   attachments?: Attachment[];
   history?: DocumentVersion[];

@@ -71,6 +71,7 @@ const saveDocuments = (key: string, docs: SavedDocument[]): void => {
       
       return {
         ...newDoc,
+        updatedAt: timestamp,
         history: updatedHistory
       };
     }
