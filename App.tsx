@@ -1075,7 +1075,9 @@ Solicitação do usuário: "${refinePrompt}"
                               </div>
                           </div>
                           {att.description && (
-                              <p className="text-sm text-slate-600 mt-2 pl-6">{att.description}</p>
+                              <div className="mt-2 pl-4 ml-6 border-l-2 border-slate-200">
+                                <p className="text-sm text-slate-600 italic">"{att.description}"</p>
+                              </div>
                           )}
                       </div>
                     ))}

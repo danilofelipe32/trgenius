@@ -211,7 +211,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
             </span>
           </div>
           {attachments.map((file, index) => (
-            <div key={index} className="flex flex-col bg-slate-50 p-3 rounded-lg transition-all shadow-sm hover:shadow-md gap-3 border border-slate-200">
+            <div key={index} className="flex flex-col bg-slate-50 p-3 rounded-lg transition-all shadow-sm hover:shadow-md gap-2 border border-slate-200">
               <div className="flex items-center">
                 <Icon name={getFileIcon(file.type)} className="text-xl text-slate-500 mr-4" />
                 <div className="flex-grow truncate">
@@ -230,14 +230,14 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                  <Icon name="info-circle" className="text-slate-400" />
-                  <input
-                      type="text"
+              <div className="flex items-start gap-2 pt-1">
+                  <Icon name="comment-alt" className="text-slate-400 mt-1.5" />
+                  <textarea
                       value={file.description || ''}
                       onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                      placeholder="Adicionar uma breve descrição..."
-                      className="w-full text-sm bg-white border border-slate-200 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      placeholder="Adicionar uma descrição..."
+                      className="w-full text-sm bg-white border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-y min-h-[40px] transition-all"
+                      rows={1}
                   />
               </div>
             </div>
