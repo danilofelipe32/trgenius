@@ -26,9 +26,23 @@ export async function callGemini(prompt: string): Promise<string> {
 
   } catch (error: any) {
     console.error("Erro ao chamar a API Gemini:", error);
-    if (error.message && error.message.includes('API key not valid')) {
+
+    const errorMessage = error.message || '';
+
+    if (errorMessage.includes('API key not valid')) {
         return `Erro: A chave de API fornecida não é válida. Verifique se a chave está correta e se a API Generative Language está ativada no seu projeto Google Cloud.`;
     }
-    return `Erro: Falha na comunicação com a API. Verifique a sua ligação à Internet. Detalhes: ${error.message}`;
+    
+    if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+        const retryMatch = errorMessage.match(/retryDelay": "(\d+\.?\d*)s"/);
+        let retryMessage = "Por favor, tente novamente mais tarde.";
+        if (retryMatch && retryMatch[1]) {
+            const delay = Math.ceil(parseFloat(retryMatch[1]));
+            retryMessage = ` Por favor, aguarde cerca de ${delay} segundos antes de tentar novamente.`;
+        }
+        return `Erro: Limite de utilização da API excedido (cota). Você fez muitas solicitações num curto espaço de tempo.${retryMessage} Se o problema persistir, verifique o seu plano de faturação da API Gemini.`;
+    }
+
+    return `Erro: Falha na comunicação com a API. Verifique a sua ligação à Internet. Detalhes: ${errorMessage}`;
   }
 }
