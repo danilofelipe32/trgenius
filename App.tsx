@@ -214,6 +214,9 @@ const App: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Summary state
+  const [summaryState, setSummaryState] = useState<{ loading: boolean; content: string | null }>({ loading: false, content: null });
+
   const priorityFilters: {
     key: 'all' | Priority;
     label: string;
@@ -843,6 +846,64 @@ Solicitação do usuário: "${refinePrompt}"
   const getAttachmentDataUrl = (attachment: Attachment) => {
     return `data:${attachment.type};base64,${attachment.content}`;
   };
+  
+  const handleGenerateSummary = async () => {
+      if (!previewContext.type || previewContext.id === null) return;
+
+      const { type, id } = previewContext;
+      const docs = type === 'etp' ? savedETPs : savedTRs;
+      const doc = docs.find(d => d.id === id);
+
+      if (!doc) {
+        setMessage({ title: 'Erro', text: 'Documento não encontrado para gerar o resumo.' });
+        return;
+      }
+
+      setSummaryState({ loading: true, content: null });
+
+      const allSections = type === 'etp' ? etpSections : trSections;
+      const documentText = allSections
+        .map(section => {
+          const content = doc.sections[section.id];
+          if (content && String(content).trim()) {
+            return `### ${section.title}\n${content}`;
+          }
+          return null;
+        })
+        .filter(Boolean)
+        .join('\n\n---\n\n');
+
+      if (!documentText.trim()) {
+        setSummaryState({ loading: false, content: 'O documento está vazio e não pode ser resumido.' });
+        return;
+      }
+
+      const prompt = `Você é um assistente especializado em analisar documentos de licitações públicas. Sua tarefa é criar um resumo executivo do documento a seguir.
+
+      O resumo deve ser conciso e destacar os seguintes pontos:
+      1.  O objetivo principal da contratação.
+      2.  Os elementos ou requisitos mais importantes.
+      3.  A conclusão ou solução recomendada.
+
+      Seja direto e claro. O resumo não deve exceder 200 palavras.
+
+      --- INÍCIO DO DOCUMENTO ---
+      ${documentText}
+      --- FIM DO DOCUMENTO ---
+
+      --- RESUMO EXECUTIVO ---`;
+
+      try {
+        const summary = await callGemini(prompt);
+        if (summary && !summary.startsWith("Erro:")) {
+          setSummaryState({ loading: false, content: summary });
+        } else {
+          setSummaryState({ loading: false, content: `Erro ao gerar resumo: ${summary}` });
+        }
+      } catch (error: any) {
+        setSummaryState({ loading: false, content: `Falha inesperada ao gerar resumo: ${error.message}` });
+      }
+    };
 
   const renderPreviewContent = () => {
     if (!previewContext.type || previewContext.id === null) return null;
@@ -856,13 +917,38 @@ Solicitação do usuário: "${refinePrompt}"
     return (
       <div>
         <div className="pb-4 border-b border-slate-200 mb-6">
-            <h1 className="text-3xl font-extrabold text-slate-800 leading-tight">{doc.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 mt-2">
-                <span><Icon name="calendar-plus" className="mr-1.5" /> Criado em: {new Date(doc.createdAt).toLocaleString('pt-BR')}</span>
-                {doc.updatedAt && doc.updatedAt !== doc.createdAt && (
-                <span><Icon name="calendar-check" className="mr-1.5" /> Última modif.: {new Date(doc.updatedAt).toLocaleString('pt-BR')}</span>
-                )}
+            <div className="flex justify-between items-start flex-wrap gap-y-3">
+              <div>
+                  <h1 className="text-3xl font-extrabold text-slate-800 leading-tight">{doc.name}</h1>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500 mt-2">
+                      <span><Icon name="calendar-plus" className="mr-1.5" /> Criado em: {new Date(doc.createdAt).toLocaleString('pt-BR')}</span>
+                      {doc.updatedAt && doc.updatedAt !== doc.createdAt && (
+                      <span><Icon name="calendar-check" className="mr-1.5" /> Última modif.: {new Date(doc.updatedAt).toLocaleString('pt-BR')}</span>
+                      )}
+                  </div>
+              </div>
+               <button
+                  onClick={handleGenerateSummary}
+                  disabled={summaryState.loading}
+                  className="flex items-center gap-2 bg-purple-100 text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                  <Icon name="wand-magic-sparkles" />
+                  {summaryState.loading ? 'A resumir...' : 'Gerar Resumo com IA'}
+              </button>
             </div>
+             {(summaryState.loading || summaryState.content) && (
+                <div className="mt-6 p-4 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
+                    <h3 className="font-bold text-purple-800 text-lg mb-2">Resumo Executivo</h3>
+                    {summaryState.loading ? (
+                        <div className="flex items-center gap-2 text-purple-700">
+                            <Icon name="spinner" className="fa-spin" />
+                            <span>A IA está a processar o seu pedido...</span>
+                        </div>
+                    ) : (
+                        <p className="text-purple-900 whitespace-pre-wrap">{summaryState.content}</p>
+                    )}
+                </div>
+            )}
         </div>
         
         <div className="space-y-8">
@@ -1531,7 +1617,11 @@ Solicitação do usuário: "${refinePrompt}"
 
       <Modal 
         isOpen={isPreviewModalOpen} 
-        onClose={() => { setIsPreviewModalOpen(false); setViewingAttachment(null); }} 
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setViewingAttachment(null);
+          setSummaryState({ loading: false, content: null });
+        }} 
         title="Pré-visualização do Documento" 
         maxWidth="max-w-3xl"
         footer={
