@@ -1163,9 +1163,12 @@ Solicitação do usuário: "${refinePrompt}"
                 </div>
 
                 {/* Accordion Section: ETPs */}
-                <div className="py-2">
-                  <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left">
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">ETPs Salvos</h3>
+                <div className="py-1">
+                  <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-blue-50 transition-colors">
+                    <div className="flex items-center">
+                        <Icon name="file-alt" className="text-blue-500 w-5 text-center" />
+                        <h3 className="text-sm font-semibold text-blue-600 uppercase tracking-wider ml-2">ETPs Salvos</h3>
+                    </div>
                     <Icon name={openSidebarSections.etps ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
                   </button>
                   <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.etps ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
@@ -1228,9 +1231,12 @@ Solicitação do usuário: "${refinePrompt}"
                 </div>
 
                 {/* Accordion Section: TRs */}
-                <div className="py-2">
-                  <button onClick={() => toggleSidebarSection('trs')} className="w-full flex justify-between items-center text-left">
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">TRs Salvos</h3>
+                <div className="py-1">
+                  <button onClick={() => toggleSidebarSection('trs')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-purple-50 transition-colors">
+                    <div className="flex items-center">
+                        <Icon name="gavel" className="text-purple-500 w-5 text-center" />
+                        <h3 className="text-sm font-semibold text-purple-600 uppercase tracking-wider ml-2">TRs Salvos</h3>
+                    </div>
                     <Icon name={openSidebarSections.trs ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
                   </button>
                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.trs ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
@@ -1293,12 +1299,19 @@ Solicitação do usuário: "${refinePrompt}"
                 </div>
                 
                 <div className="py-2 border-t mt-2">
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Base de Conhecimento</h3>
+                    <div className="flex items-center text-slate-500 px-2 mt-2">
+                        <Icon name="database" className="w-5 text-center" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wider ml-2">Base de Conhecimento</h3>
+                    </div>
                 </div>
+
                 {/* Accordion Section: RAG */}
-                <div className="py-2">
-                  <button onClick={() => toggleSidebarSection('rag')} className="w-full flex justify-between items-center text-left">
-                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Documentos de Apoio (RAG)</h3>
+                <div className="py-1">
+                  <button onClick={() => toggleSidebarSection('rag')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                     <div className="flex items-center">
+                        <Icon name="book" className="text-slate-500 w-5 text-center" />
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider ml-2">Documentos de Apoio (RAG)</h3>
+                    </div>
                     <Icon name={openSidebarSections.rag ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
                   </button>
                   <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.rag ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
