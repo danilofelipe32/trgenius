@@ -11,6 +11,32 @@ import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
 import { etpSections, trSections } from './config/sections';
 
+declare const mammoth: any;
+
+const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
+    const binaryString = window.atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+};
+
+const base64ToUtf8 = (base64: string): string => {
+    try {
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return new TextDecoder('utf-8').decode(bytes);
+    } catch(e) {
+        console.error("Failed to decode base64 string:", e);
+        return "Erro ao descodificar o conteúdo do ficheiro. Pode estar corrompido ou numa codificação não suportada.";
+    }
+};
+
 const priorityLabels: Record<Priority, string> = {
   high: 'Alta',
   medium: 'Média',
@@ -217,6 +243,11 @@ const App: React.FC = () => {
   
   // Summary state
   const [summaryState, setSummaryState] = useState<{ loading: boolean; content: string | null }>({ loading: false, content: null });
+  
+  // Preview State
+  const [previewContent, setPreviewContent] = useState<{ type: 'html' | 'text'; content: string } | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
 
   const priorityFilters: {
     key: 'all' | Priority;
@@ -364,6 +395,43 @@ const App: React.FC = () => {
 
       return () => clearInterval(interval);
   }, []); // Run only once
+  
+  // Attachment Preview Generator
+  useEffect(() => {
+    if (!viewingAttachment) {
+        setPreviewContent(null);
+        return;
+    }
+
+    const { type, content, name } = viewingAttachment;
+    const lowerCaseName = name.toLowerCase();
+
+    if (type === 'text/plain' || lowerCaseName.endsWith('.txt')) {
+        setPreviewContent({ type: 'text', content: base64ToUtf8(content) });
+    } else if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || lowerCaseName.endsWith('.docx')) {
+        setIsLoadingPreview(true);
+        setPreviewContent(null);
+        try {
+            const arrayBuffer = base64ToArrayBuffer(content);
+            mammoth.convertToHtml({ arrayBuffer })
+                .then((result: { value: string }) => {
+                    setPreviewContent({ type: 'html', content: result.value });
+                })
+                .catch((err: any) => {
+                    console.error("Error converting docx to html", err);
+                    setPreviewContent({ type: 'html', content: '<p class="text-red-500 font-semibold p-4">Erro ao pré-visualizar o ficheiro DOCX.</p>' });
+                })
+                .finally(() => setIsLoadingPreview(false));
+        } catch (err) {
+            console.error("Error processing docx", err);
+            setPreviewContent({ type: 'html', content: '<p class="text-red-500 font-semibold p-4">Erro ao processar o ficheiro .docx.</p>' });
+            setIsLoadingPreview(false);
+        }
+    } else {
+        // Reset for images, PDFs which are handled natively by object/img tags
+        setPreviewContent(null); 
+    }
+  }, [viewingAttachment]);
 
   // --- Handlers ---
   const handleLogin = (success: boolean) => {
@@ -989,22 +1057,27 @@ Solicitação do usuário: "${refinePrompt}"
         {doc.attachments && doc.attachments.length > 0 && (
             <div className="mt-8">
                 <h2 className="text-xl font-bold text-slate-700 mb-3">Anexos</h2>
-                <div className="space-y-2">
+                <div className="space-y-3">
                     {doc.attachments.map((att, index) => (
-                        <div key={index} className="flex items-center justify-between bg-slate-100 p-2 rounded-lg text-sm">
-                            <div className="flex items-center gap-2 truncate">
-                                <Icon name="file-alt" className="text-slate-500" />
-                                <span className="font-medium text-slate-800 truncate">{att.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                                <button 
-                                    onClick={() => viewingAttachment?.name === att.name ? setViewingAttachment(null) : setViewingAttachment(att)} 
-                                    className="text-blue-600 hover:text-blue-800 font-semibold"
-                                >
-                                    {viewingAttachment?.name === att.name ? 'Ocultar' : 'Visualizar'}
-                                </button>
-                            </div>
-                        </div>
+                        <div key={index} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                          <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 truncate">
+                                  <Icon name="file-alt" className="text-slate-500" />
+                                  <span className="font-medium text-slate-800 truncate">{att.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                  <button 
+                                      onClick={() => viewingAttachment?.name === att.name ? setViewingAttachment(null) : setViewingAttachment(att)} 
+                                      className="text-blue-600 hover:text-blue-800 font-semibold text-sm"
+                                  >
+                                      {viewingAttachment?.name === att.name ? 'Ocultar' : 'Visualizar'}
+                                  </button>
+                              </div>
+                          </div>
+                          {att.description && (
+                              <p className="text-sm text-slate-600 mt-2 pl-6">{att.description}</p>
+                          )}
+                      </div>
                     ))}
                 </div>
             </div>
@@ -1018,8 +1091,21 @@ Solicitação do usuário: "${refinePrompt}"
                         <Icon name="times" className="text-xl" />
                     </button>
                 </div>
-                <div className="w-full h-[60vh] bg-slate-100 rounded-lg flex items-center justify-center">
-                    {viewingAttachment.type.startsWith('image/') ? (
+                <div className="w-full h-[60vh] bg-slate-100 rounded-lg border flex items-center justify-center">
+                    {isLoadingPreview ? (
+                        <div className="flex flex-col items-center gap-2 text-slate-600">
+                            <Icon name="spinner" className="fa-spin text-3xl" />
+                            <span>A carregar pré-visualização...</span>
+                        </div>
+                    ) : previewContent ? (
+                        <div className="w-full h-full bg-white p-4 overflow-auto rounded-lg">
+                            {previewContent.type === 'text' ? (
+                                <pre className="text-sm whitespace-pre-wrap font-sans">{previewContent.content}</pre>
+                            ) : (
+                                <div className="prose max-w-none p-2" dangerouslySetInnerHTML={{ __html: previewContent.content }} />
+                            )}
+                        </div>
+                    ) : viewingAttachment.type.startsWith('image/') ? (
                         <img src={getAttachmentDataUrl(viewingAttachment)} alt={viewingAttachment.name} className="max-w-full max-h-full object-contain" />
                     ) : viewingAttachment.type === 'application/pdf' ? (
                         <object data={getAttachmentDataUrl(viewingAttachment)} type="application/pdf" width="100%" height="100%">

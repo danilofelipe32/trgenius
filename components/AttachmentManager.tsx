@@ -74,6 +74,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
           type: file.type,
           size: file.size,
           content: base64Content,
+          description: '',
         });
         currentTotalSize += file.size; // Update total size after successful processing
         setProcessingStatus(prev => prev.map(p => p.name === file.name ? { ...p, status: 'success' } : p));
@@ -94,6 +95,13 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
     }, 5000); // Clear status after 5 seconds
 
   }, [attachments, onAttachmentsChange, setMessage]);
+
+  const handleDescriptionChange = (indexToUpdate: number, newDescription: string) => {
+    const updatedAttachments = attachments.map((att, index) => 
+      index === indexToUpdate ? { ...att, description: newDescription } : att
+    );
+    onAttachmentsChange(updatedAttachments);
+  };
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -171,7 +179,15 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
 
       {processingStatus.length > 0 && (
         <div className="mb-4 p-3 bg-slate-100 rounded-lg space-y-2">
-            <h4 className="text-xs font-bold text-slate-600">A processar ficheiros...</h4>
+            <h4 className="text-xs font-bold text-slate-600">
+                A processar {processingStatus.filter(f => f.status !== 'processing').length} de {processingStatus.length} ficheiro(s)...
+            </h4>
+            <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+                <div 
+                    className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" 
+                    style={{ width: `${(processingStatus.filter(f => f.status !== 'processing').length / processingStatus.length) * 100}%` }}
+                ></div>
+            </div>
             {processingStatus.map(file => (
                 <div key={file.name} className="flex items-center text-xs justify-between">
                     <div className="flex items-center gap-2 truncate flex-1">
@@ -195,22 +211,34 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({ attachment
             </span>
           </div>
           {attachments.map((file, index) => (
-            <div key={index} className="flex items-center bg-slate-100 p-3 rounded-lg text-sm transition-all shadow-sm hover:shadow-md">
-              <Icon name={getFileIcon(file.type)} className="text-xl text-slate-500 mr-4" />
-              <div className="flex-grow truncate">
-                <p className="font-semibold text-slate-800 truncate">{file.name}</p>
-                <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
+            <div key={index} className="flex flex-col bg-slate-50 p-3 rounded-lg transition-all shadow-sm hover:shadow-md gap-3 border border-slate-200">
+              <div className="flex items-center">
+                <Icon name={getFileIcon(file.type)} className="text-xl text-slate-500 mr-4" />
+                <div className="flex-grow truncate">
+                  <p className="font-semibold text-slate-800 truncate">{file.name}</p>
+                  <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0 ml-4">
+                  <button onClick={() => onPreview(file)} className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-xs p-2 rounded-md hover:bg-blue-100 transition-colors" title="Visualizar">
+                    <Icon name="eye" /> <span className="hidden sm:inline">Visualizar</span>
+                  </button>
+                  <button onClick={() => handleDownload(file)} className="flex items-center gap-1 text-green-600 hover:text-green-800 font-semibold text-xs p-2 rounded-md hover:bg-green-100 transition-colors" title="Baixar">
+                    <Icon name="download" /> <span className="hidden sm:inline">Baixar</span>
+                  </button>
+                  <button onClick={() => handleRemove(index)} className="flex items-center gap-1 text-red-600 hover:text-red-800 font-semibold text-xs p-2 rounded-md hover:bg-red-100 transition-colors" title="Remover">
+                    <Icon name="trash" /> <span className="hidden sm:inline">Remover</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                <button onClick={() => onPreview(file)} className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-xs p-2 rounded-md hover:bg-blue-100 transition-colors" title="Visualizar">
-                  <Icon name="eye" /> Visualizar
-                </button>
-                <button onClick={() => handleDownload(file)} className="flex items-center gap-1 text-green-600 hover:text-green-800 font-semibold text-xs p-2 rounded-md hover:bg-green-100 transition-colors" title="Baixar">
-                  <Icon name="download" /> Baixar
-                </button>
-                <button onClick={() => handleRemove(index)} className="flex items-center gap-1 text-red-600 hover:text-red-800 font-semibold text-xs p-2 rounded-md hover:bg-red-100 transition-colors" title="Remover">
-                  <Icon name="trash" /> Remover
-                </button>
+              <div className="flex items-center gap-2">
+                  <Icon name="info-circle" className="text-slate-400" />
+                  <input
+                      type="text"
+                      value={file.description || ''}
+                      onChange={(e) => handleDescriptionChange(index, e.target.value)}
+                      placeholder="Adicionar uma breve descrição..."
+                      className="w-full text-sm bg-white border border-slate-200 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  />
               </div>
             </div>
           ))}

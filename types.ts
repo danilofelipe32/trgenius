@@ -19,6 +19,7 @@ export interface Attachment {
   type: string;
   size: number;
   content: string; // base64 encoded content
+  description?: string;
 }
 
 export interface DocumentVersion {
