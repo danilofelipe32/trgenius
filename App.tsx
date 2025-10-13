@@ -1570,16 +1570,16 @@ Solicitação do usuário: "${refinePrompt}"
                     </nav>
                   </div>
                 </div>
-                <div className="flex-shrink-0 ml-4 flex items-center gap-2">
+                <div className="flex-shrink-0 ml-4 flex items-center">
                     {isOnline ? (
-                        <div className="flex items-center gap-1 bg-green-100 text-green-800 text-xs font-semibold px-2 py-1 rounded-full" title="A ligação à Internet está ativa.">
+                        <div className="flex items-center justify-center w-8 h-8 md:w-auto md:px-2 md:py-1 md:gap-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full" title="A ligação à Internet está ativa.">
                             <Icon name="wifi" />
-                            <span>Online</span>
+                            <span className="hidden md:inline">Online</span>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2 py-1 rounded-full" title="Sem ligação à Internet. As funcionalidades online estão desativadas.">
+                        <div className="flex items-center justify-center w-8 h-8 md:w-auto md:px-2 md:py-1 md:gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full" title="Sem ligação à Internet. As funcionalidades online estão desativadas.">
                             <Icon name="wifi-slash" />
-                            <span>Offline</span>
+                            <span className="hidden md:inline">Offline</span>
                         </div>
                     )}
                 </div>
