@@ -31,7 +31,14 @@ export const exportDocumentToPDF = (doc: SavedDocument, sections: Section[]) => 
     addText(doc.name, { size: 18, isBold: true, spacing: 5 });
     
     const creationDate = `Criado em: ${new Date(doc.createdAt).toLocaleString('pt-BR')}`;
-    addText(creationDate, { size: 9, spacing: 20 });
+    // Add updatedAt if available and different from createdAt
+    if (doc.updatedAt && doc.updatedAt !== doc.createdAt) {
+        addText(creationDate, { size: 9, spacing: 5 });
+        const updatedDate = `Atualizado em: ${new Date(doc.updatedAt).toLocaleString('pt-BR')}`;
+        addText(updatedDate, { size: 9, spacing: 20 });
+    } else {
+        addText(creationDate, { size: 9, spacing: 20 });
+    }
     
     pdf.setLineWidth(0.5);
     pdf.line(pageMargin, yPos, pageWidth - pageMargin, yPos);
@@ -39,9 +46,9 @@ export const exportDocumentToPDF = (doc: SavedDocument, sections: Section[]) => 
 
     sections.forEach(section => {
         const content = doc.sections[section.id];
-        if (content && content.trim()) {
+        if (content && String(content).trim()) {
             addText(section.title, { size: 14, isBold: true, spacing: 10 });
-            addText(content, { size: 11, spacing: 20 });
+            addText(String(content), { size: 11, spacing: 20 });
         }
     });
 
