@@ -1195,6 +1195,31 @@ Solicitação do usuário: "${refinePrompt}"
     setIsInstallBannerVisible(false);
   };
 
+  const handleShare = async () => {
+    const shareData = {
+        title: 'TR Genius PWA',
+        text: 'Conheça o TR Genius, seu assistente IA para licitações!',
+        url: 'https://trgenius.netlify.app/'
+    };
+
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (error) {
+            console.error('Erro ao partilhar:', error);
+        }
+    } else {
+        // Fallback: Copy to clipboard
+        try {
+            await navigator.clipboard.writeText(shareData.url);
+            setMessage({ title: "Link Copiado", text: "O link da aplicação foi copiado para a sua área de transferência!" });
+        } catch (error) {
+            console.error('Erro ao copiar o link:', error);
+            setMessage({ title: "Erro", text: "Não foi possível copiar o link. Por favor, copie manualmente: https://trgenius.netlify.app/" });
+        }
+    }
+  };
+
   const { displayedETPs, displayedTRs } = useMemo(() => {
     const processDocuments = (docs: SavedDocument[]) => {
       const filtered = docs.filter(doc =>
@@ -1241,11 +1266,20 @@ Solicitação do usuário: "${refinePrompt}"
           </button>
          
           <aside className={`fixed md:relative top-0 left-0 h-full w-full max-w-sm md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col transition-transform duration-300 z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-             <div className="flex items-center gap-3 mb-6 pt-10 md:pt-0">
-                <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
-                    <Icon name="brain" className="text-pink-600 text-xl" />
+             <div className="flex items-center justify-between gap-3 mb-6 pt-10 md:pt-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <Icon name="brain" className="text-pink-600 text-xl" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900">TR Genius</h1>
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900">TR Genius</h1>
+                <button 
+                    onClick={handleShare}
+                    className="w-10 h-10 flex items-center justify-center text-slate-500 bg-slate-100 rounded-lg hover:bg-slate-200 hover:text-blue-600 transition-colors"
+                    title="Partilhar Aplicação"
+                >
+                    <Icon name="share-alt" />
+                </button>
             </div>
             <p className="text-slate-500 text-sm mb-4 leading-relaxed">
                 Seu assistente para criar Estudos Técnicos e Termos de Referência, em conformidade com a <b>Lei 14.133/21</b>.
