@@ -1091,20 +1091,19 @@ Solicitação do usuário: "${refinePrompt}"
                                               if (e.key === 'Enter') handleUpdateDocumentDetails();
                                               if (e.key === 'Escape') setEditingDoc(null);
                                           }}
-                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1 mb-2"
+                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
                                           autoFocus
                                       />
-                                      <div className="flex items-center justify-around">
-                                          {(['high', 'medium', 'low'] as const).map(p => (
-                                              <button
-                                                  key={p}
-                                                  onClick={() => setEditingDoc(prev => prev ? { ...prev, priority: p } : null)}
-                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
-                                              >
-                                                  {priorityLabels[p]}
-                                              </button>
-                                          ))}
-                                      </div>
+                                      <select
+                                          value={editingDoc.priority}
+                                          onChange={(e) => setEditingDoc(prev => prev ? { ...prev, priority: e.target.value as Priority } : null)}
+                                          onBlur={handleUpdateDocumentDetails}
+                                          className="w-full mt-2 p-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                                      >
+                                          <option value="high">{priorityLabels.high}</option>
+                                          <option value="medium">{priorityLabels.medium}</option>
+                                          <option value="low">{priorityLabels.low}</option>
+                                      </select>
                                   </div>
                               ) : (
                                   <div className="flex items-center gap-2 truncate">
@@ -1150,20 +1149,19 @@ Solicitação do usuário: "${refinePrompt}"
                                               if (e.key === 'Enter') handleUpdateDocumentDetails();
                                               if (e.key === 'Escape') setEditingDoc(null);
                                           }}
-                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1 mb-2"
+                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
                                           autoFocus
                                       />
-                                      <div className="flex items-center justify-around">
-                                          {(['high', 'medium', 'low'] as const).map(p => (
-                                              <button
-                                                  key={p}
-                                                  onClick={() => setEditingDoc(prev => prev ? { ...prev, priority: p } : null)}
-                                                  className={`px-2 py-0.5 text-xs rounded-full border-2 ${editingDoc.priority === p ? 'border-blue-500 bg-blue-100 font-semibold' : 'border-transparent'}`}
-                                              >
-                                                  {priorityLabels[p]}
-                                              </button>
-                                          ))}
-                                      </div>
+                                      <select
+                                          value={editingDoc.priority}
+                                          onChange={(e) => setEditingDoc(prev => prev ? { ...prev, priority: e.target.value as Priority } : null)}
+                                          onBlur={handleUpdateDocumentDetails}
+                                          className="w-full mt-2 p-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                                      >
+                                          <option value="high">{priorityLabels.high}</option>
+                                          <option value="medium">{priorityLabels.medium}</option>
+                                          <option value="low">{priorityLabels.low}</option>
+                                      </select>
                                   </div>
                               ) : (
                                   <div className="flex items-center gap-2 truncate">
