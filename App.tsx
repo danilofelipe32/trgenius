@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
@@ -210,9 +210,10 @@ const App: React.FC = () => {
   const etpContentRef = useRef(etpSectionsContent);
   const trContentRef = useRef(trSectionsContent);
 
-  // Filter state
+  // Filter and Sort state
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOrder, setSortOrder] = useState<'updatedAt' | 'name'>('updatedAt');
   
   // Summary state
   const [summaryState, setSummaryState] = useState<{ loading: boolean; content: string | null }>({ loading: false, content: null });
@@ -1090,18 +1091,35 @@ Solicitação do usuário: "${refinePrompt}"
     setIsInstallBannerVisible(false);
   };
 
+  const { displayedETPs, displayedTRs } = useMemo(() => {
+    const processDocuments = (docs: SavedDocument[]) => {
+      const filtered = docs.filter(doc =>
+        (priorityFilter === 'all' || doc.priority === priorityFilter) &&
+        doc.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      
+      const sorted = [...filtered].sort((a, b) => {
+        if (sortOrder === 'name') {
+          return a.name.localeCompare(b.name);
+        }
+        // Default sort by 'updatedAt' descending
+        const dateA = new Date(a.updatedAt).getTime();
+        const dateB = new Date(b.updatedAt).getTime();
+        return dateB - dateA;
+      });
+      
+      return sorted;
+    };
+    
+    return {
+      displayedETPs: processDocuments(savedETPs),
+      displayedTRs: processDocuments(savedTRs)
+    };
+  }, [savedETPs, savedTRs, priorityFilter, searchTerm, sortOrder]);
+
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
-  
-  const filteredETPs = savedETPs.filter(etp =>
-    (priorityFilter === 'all' || etp.priority === priorityFilter) &&
-    etp.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const filteredTRs = savedTRs.filter(tr =>
-    (priorityFilter === 'all' || tr.priority === priorityFilter) &&
-    tr.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 font-sans">
@@ -1162,6 +1180,28 @@ Solicitação do usuário: "${refinePrompt}"
                     </div>
                 </div>
 
+                <div className="py-2">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Ordenar por</h3>
+                    <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1 gap-1">
+                        <button
+                            onClick={() => setSortOrder('updatedAt')}
+                            className={`px-2 py-1 text-xs font-semibold rounded-md transition-all w-full flex items-center justify-center gap-1 ${
+                                sortOrder === 'updatedAt' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:bg-slate-200'
+                            }`}
+                        >
+                            <Icon name="history" /> Data Modif.
+                        </button>
+                        <button
+                            onClick={() => setSortOrder('name')}
+                            className={`px-2 py-1 text-xs font-semibold rounded-md transition-all w-full flex items-center justify-center gap-1 ${
+                                sortOrder === 'name' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:bg-slate-200'
+                            }`}
+                        >
+                           <Icon name="sort-alpha-down" /> Nome (A-Z)
+                        </button>
+                    </div>
+                </div>
+
                 {/* Accordion Section: ETPs */}
                 <div className="py-1">
                   <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-blue-50 transition-colors">
@@ -1173,9 +1213,9 @@ Solicitação do usuário: "${refinePrompt}"
                   </button>
                   <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.etps ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
                     <div className="space-y-2">
-                      {filteredETPs.length > 0 ? (
+                      {displayedETPs.length > 0 ? (
                         <ul className="space-y-2">
-                          {filteredETPs.map(etp => (
+                          {displayedETPs.map(etp => (
                             <li key={etp.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
                               {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
                                   <div className="w-full">
@@ -1241,9 +1281,9 @@ Solicitação do usuário: "${refinePrompt}"
                   </button>
                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.trs ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
                     <div className="space-y-2">
-                      {filteredTRs.length > 0 ? (
+                      {displayedTRs.length > 0 ? (
                         <ul className="space-y-2">
-                          {filteredTRs.map(tr => (
+                          {displayedTRs.map(tr => (
                             <li key={tr.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
                                {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
                                   <div className="w-full">
