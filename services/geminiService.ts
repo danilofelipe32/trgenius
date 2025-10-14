@@ -30,7 +30,7 @@ export async function callGemini(prompt: string): Promise<string> {
     const errorMessage = error.message || '';
 
     if (errorMessage.includes('API key not valid')) {
-        return `Erro: A chave de API fornecida não é válida. Verifique se a chave está correta e se a API Generative Language está ativada no seu projeto Google Cloud.`;
+        return `Erro: A chave de API não é válida ou não foi configurada. Verifique se a variável de ambiente API_KEY está definida corretamente nas configurações do seu ambiente (ex: Netlify).`;
     }
     
     if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {

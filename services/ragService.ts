@@ -6,9 +6,8 @@ declare const mammoth: any;
 export const chunkText = (text: string): string[] => {
   const normalizedText = text.replace(/\s\s+/g, ' ').trim();
   
-  // Tenta dividir por artigos de lei primeiro
   const articles = normalizedText.split(/(Art\.\s\d+º?\.?)/).slice(1);
-  if (articles.length > 2) { // Heurística para verificar se a divisão por artigo funcionou
+  if (articles.length > 2) {
     const chunks = [];
     for (let i = 0; i < articles.length; i += 2) {
       chunks.push((articles[i] + articles[i + 1]).trim());
@@ -16,7 +15,6 @@ export const chunkText = (text: string): string[] => {
     return chunks.filter(c => c.length > 10);
   }
 
-  // Fallback para divisão por parágrafos
   return text.split(/\n\s*\n/).filter(paragraph => paragraph.trim().length > 10);
 };
 
