@@ -1,27 +1,20 @@
 import { GoogleGenAI } from "@google/genai";
 
-// APLICAÇÃO EM FASE DE TESTES: Mantenha a chave aqui, conforme solicitado.
-// Para produção, mova para uma variável de ambiente (process.env.API_KEY).
-const API_KEY = "COLOQUE_SUA_CHAVE_API_AQUI";
-
-if (API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI") {
-  console.warn("Chave de API do Gemini não configurada. Substitua o placeholder em services/geminiService.ts.");
-}
-
+// Chave de API do Gemini para fins de teste, conforme solicitado.
+const API_KEY = "AIzaSyB1SGptDVNzOh888rzlNSkXCiT5P2goNo0";
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export async function callGemini(prompt: string): Promise<string> {
   try {
-    // Per guidelines, use gemini-2.5-flash
+    // Conforme as diretrizes, usar gemini-2.5-flash
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
-    // Per guidelines, the simplest way to get text is response.text
+    // Conforme as diretrizes, a forma mais simples de obter o texto é response.text
     const text = response.text;
     
-    // The original implementation had a check for safety finish reason.
     if (response.candidates && response.candidates[0] && response.candidates[0].finishReason === 'SAFETY') {
       return "Erro: A resposta foi bloqueada devido a configurações de segurança. O seu prompt pode conter conteúdo sensível.";
     }
@@ -37,8 +30,8 @@ export async function callGemini(prompt: string): Promise<string> {
 
     const errorMessage = error.message || '';
 
-    if (errorMessage.includes('API key not valid') || API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI") {
-        return `Erro: A chave de API do Gemini não é válida ou não foi configurada. Por favor, edite o ficheiro 'services/geminiService.ts' e substitua o valor da constante 'API_KEY' pela sua chave.`;
+    if (errorMessage.includes('API key not valid')) {
+        return `Erro: A chave de API do Gemini fornecida não é válida. Verifique a chave no arquivo services/geminiService.ts.`;
     }
     
     if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
