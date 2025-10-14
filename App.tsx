@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
@@ -11,6 +10,7 @@ import { AttachmentManager } from './components/AttachmentManager';
 import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
 import { etpSections, trSections } from './config/sections';
+import lawData from './lei14133.json';
 
 declare const mammoth: any;
 
@@ -21,7 +21,7 @@ const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
     for (let i = 0; i < len; i++) {
         bytes[i] = binaryString.charCodeAt(i);
     }
-    return bytes.buffer;
+    return bytes.buffer as ArrayBuffer;
 };
 
 const base64ToUtf8 = (base64: string): string => {
@@ -293,11 +293,8 @@ const App: React.FC = () => {
         const userFiles = storage.getStoredFiles();
 
         try {
-            const response = await fetch('./lei14133.json');
-            if (!response.ok) throw new Error('Falha ao carregar a base de conhecimento.');
-
-            const lawData: { page: number; content: string }[] = await response.json();
-            const fullText = lawData.map(item => item.content).join('\n\n');
+            const lawContent = lawData as { page: number; content: string }[];
+            const fullText = lawContent.map(item => item.content).join('\n\n');
             const chunks = chunkText(fullText);
 
             const lawFile: UploadedFile = {
@@ -312,7 +309,7 @@ const App: React.FC = () => {
 
         } catch (error) {
             console.error("Erro ao carregar a base de conhecimento:", error);
-            setMessage({ title: 'Erro de Carregamento', text: `Não foi possível carregar a base de conhecimento principal (lei14133.json). Algumas funcionalidades podem ser afetadas. Detalhes: ${error}` });
+            setMessage({ title: 'Erro de Carregamento', text: `Não foi possível carregar a base de conhecimento principal (lei14133.json). Algumas funcionalidades podem ser afetadas. Detalhes: Error: Falha ao carregar a base de conhecimento.` });
             setUploadedFiles(userFiles);
         }
     };
