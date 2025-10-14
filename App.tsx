@@ -10,7 +10,6 @@ import { AttachmentManager } from './components/AttachmentManager';
 import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
 import { etpSections, trSections } from './config/sections';
-import lawData from './lei14133.json';
 
 declare const mammoth: any;
 
@@ -293,6 +292,12 @@ const App: React.FC = () => {
         const userFiles = storage.getStoredFiles();
 
         try {
+            const response = await fetch('/lei14133.json');
+            if (!response.ok) {
+                throw new Error(`Falha ao carregar o arquivo: ${response.statusText}`);
+            }
+            const lawData = await response.json();
+
             const lawContent = lawData as { page: number; content: string }[];
             const fullText = lawContent.map(item => item.content).join('\n\n');
             const chunks = chunkText(fullText);
@@ -309,7 +314,7 @@ const App: React.FC = () => {
 
         } catch (error) {
             console.error("Erro ao carregar a base de conhecimento:", error);
-            setMessage({ title: 'Erro de Carregamento', text: `Não foi possível carregar a base de conhecimento principal (lei14133.json). Algumas funcionalidades podem ser afetadas. Detalhes: Error: Falha ao carregar a base de conhecimento.` });
+            setMessage({ title: 'Erro de Carregamento', text: `Não foi possível carregar a base de conhecimento principal (lei14133.json). Algumas funcionalidades podem ser afetadas. Detalhes: ${(error as Error).message}` });
             setUploadedFiles(userFiles);
         }
     };
