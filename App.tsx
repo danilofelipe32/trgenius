@@ -184,6 +184,49 @@ const PriorityIndicator: React.FC<{ priority?: Priority }> = ({ priority }) => {
     );
 };
 
+// --- Component for viewing loaded ETP context ---
+const LoadedEtpViewer: React.FC<{ etp: SavedDocument }> = ({ etp }) => {
+    const [isExpanded, setIsExpanded] = useState(true);
+
+    return (
+        <div className="bg-blue-50 border border-blue-200 p-4 sm:p-6 rounded-xl shadow-sm mb-6">
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex justify-between items-center text-left"
+                aria-expanded={isExpanded}
+                aria-controls={`etp-context-${etp.id}`}
+            >
+                <div>
+                    <h3 className="text-lg font-semibold text-blue-800">Contexto do ETP Carregado</h3>
+                    <p className="text-sm text-blue-700 font-medium truncate">{etp.name}</p>
+                </div>
+                <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} className="text-blue-600 text-xl transition-transform" />
+            </button>
+            <div
+                id={`etp-context-${etp.id}`}
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[5000px] mt-4 pt-4 border-t border-blue-200' : 'max-h-0'}`}
+            >
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    {etpSections.map(section => {
+                        const content = etp.sections[section.id];
+                        if (content && String(content).trim()) {
+                            return (
+                                <div key={section.id}>
+                                    <h4 className="font-semibold text-slate-700 text-base mb-1">{section.title}</h4>
+                                    <div className="p-3 bg-white rounded-md border border-slate-200">
+                                        <p className="whitespace-pre-wrap text-slate-800 text-sm leading-relaxed">{content}</p>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- Main App Component ---
 const App: React.FC = () => {
@@ -197,7 +240,7 @@ const App: React.FC = () => {
   const [trSectionsContent, setTrSectionsContent] = useState<Record<string, string>>({});
   const [etpAttachments, setEtpAttachments] = useState<Attachment[]>([]);
   const [trAttachments, setTrAttachments] = useState<Attachment[]>([]);
-  const [loadedEtpForTr, setLoadedEtpForTr] = useState<{ id: number; name: string; content: string } | null>(null);
+  const [loadedEtpForTr, setLoadedEtpForTr] = useState<SavedDocument | null>(null);
 
   // State for API and files
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -508,7 +551,12 @@ const App: React.FC = () => {
         setLoadingSection(null);
         return;
       }
-      context = `--- INÍCIO DO ETP ---\n${loadedEtpForTr.content}\n--- FIM DO ETP ---`;
+      
+      const etpContentForContext = etpSections
+          .map(section => `## ${section.title}\n${loadedEtpForTr.sections[section.id] || 'Não preenchido.'}`)
+          .join('\n\n');
+          
+      context = `--- INÍCIO DO ETP ---\n${etpContentForContext}\n--- FIM DO ETP ---`;
       allSections.forEach(sec => {
         const content = currentSections[sec.id];
         if (sec.id !== sectionId && typeof content === 'string' && content.trim()) {
@@ -756,10 +804,7 @@ const App: React.FC = () => {
     }
     const etp = savedETPs.find(e => e.id === parseInt(etpId, 10));
     if (etp) {
-        const content = etpSections
-            .map(section => `## ${section.title}\n${etp.sections[section.id] || 'Não preenchido.'}`)
-            .join('\n\n');
-        setLoadedEtpForTr({ id: etp.id, name: etp.name, content });
+        setLoadedEtpForTr(etp);
     }
   };
 
@@ -801,7 +846,10 @@ const App: React.FC = () => {
     if (docType === 'tr') {
         let etpContext = '';
         if (loadedEtpForTr) {
-            etpContext = `--- INÍCIO DO ETP DE CONTEXTO ---\n${loadedEtpForTr.content}\n--- FIM DO ETP DE CONTEXTO ---\n\n`;
+            const etpContentForContext = etpSections
+                .map(section => `## ${section.title}\n${loadedEtpForTr.sections[section.id] || 'Não preenchido.'}`)
+                .join('\n\n');
+            etpContext = `--- INÍCIO DO ETP DE CONTEXTO ---\n${etpContentForContext}\n--- FIM DO ETP DE CONTEXTO ---\n\n`;
         }
 
         const trOtherSectionsContext = Object.entries(currentSections)
@@ -1708,12 +1756,9 @@ Solicitação do usuário: "${refinePrompt}"
                             <option key={etp.id} value={etp.id}>{etp.name}</option>
                         ))}
                     </select>
-                    {loadedEtpForTr && (
-                        <div className="mt-4 p-3 bg-green-50 text-green-800 border-l-4 border-green-500 rounded-r-lg">
-                            <p className="font-semibold">ETP "{loadedEtpForTr.name}" carregado com sucesso.</p>
-                        </div>
-                    )}
                 </div>
+
+                {loadedEtpForTr && <LoadedEtpViewer etp={loadedEtpForTr} />}
 
                 {trSections.map(section => {
                   if (section.isAttachmentSection) {
