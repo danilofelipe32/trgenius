@@ -10,6 +10,11 @@ import { AttachmentManager } from './components/AttachmentManager';
 import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
 import { etpSections, trSections } from './config/sections';
+import { Modal } from './components/Modal';
+import { Section } from './components/Section';
+import { PriorityIndicator } from './components/PriorityIndicator';
+import { LoadedEtpViewer } from './components/LoadedEtpViewer';
+
 
 declare const mammoth: any;
 
@@ -42,191 +47,6 @@ const priorityLabels: Record<Priority, string> = {
   medium: 'Média',
   low: 'Baixa',
 };
-
-// --- Reusable Section Component ---
-interface SectionProps {
-  id: string;
-  title: string;
-  placeholder: string;
-  value: string;
-  onChange: (id: string, value: string) => void;
-  onGenerate: () => void;
-  hasGen: boolean;
-  onAnalyze?: () => void;
-  hasRiskAnalysis?: boolean;
-  onEdit?: () => void;
-  isLoading?: boolean;
-  hasError?: boolean;
-  tooltip?: string;
-}
-
-const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChange, onGenerate, hasGen, onAnalyze, hasRiskAnalysis, onEdit, isLoading, hasError, tooltip }) => {
-  const [isCopied, setIsCopied] = useState(false);
-
-  const handleCopy = () => {
-    if (!value || !navigator.clipboard) return;
-    navigator.clipboard.writeText(value).then(() => {
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    });
-  };
-  
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
-      <div className="flex justify-between items-center mb-4 flex-wrap gap-y-3">
-        <div className="flex items-center gap-2">
-            <label htmlFor={id} className={`block text-lg font-semibold ${hasError ? 'text-red-600' : 'text-slate-700'}`}>{title}</label>
-            {tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={tooltip} />}
-        </div>
-        <div className="w-full sm:w-auto flex items-stretch gap-2 flex-wrap">
-           {value && String(value || '').trim().length > 0 && (
-             <button
-              onClick={handleCopy}
-              className={`flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold rounded-lg transition-colors min-w-[calc(50%-0.25rem)] sm:min-w-0 ${isCopied ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-              title={isCopied ? 'Copiado para a área de transferência!' : 'Copiar Conteúdo'}
-            >
-              <Icon name={isCopied ? 'check' : 'copy'} className="mr-2" /> 
-              <span>{isCopied ? 'Copiado!' : 'Copiar'}</span>
-            </button>
-           )}
-           {value && String(value || '').trim().length > 0 && onEdit && (
-             <button
-              onClick={onEdit}
-              className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors min-w-[calc(50%-0.25rem)] sm:min-w-0"
-              title="Editar e Refinar"
-            >
-              <Icon name="pencil-alt" className="mr-2" />
-              <span>Editar/Refinar</span>
-            </button>
-          )}
-          {hasRiskAnalysis && onAnalyze && (
-            <button
-              onClick={onAnalyze}
-              className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors min-w-[calc(50%-0.25rem)] sm:min-w-0"
-              title="Análise de Riscos"
-            >
-              <Icon name="shield-alt" className="mr-2" />
-              <span>Análise Risco</span>
-            </button>
-          )}
-          {hasGen && (
-            <button
-              onClick={onGenerate}
-              disabled={isLoading}
-              className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[calc(50%-0.25rem)] sm:min-w-0"
-            >
-              <Icon name="wand-magic-sparkles" className="mr-2" />
-              <span>{isLoading ? 'A gerar...' : 'Gerar com IA'}</span>
-            </button>
-          )}
-        </div>
-      </div>
-      <textarea
-        id={id}
-        value={value || ''}
-        onChange={(e) => onChange(id, e.target.value)}
-        placeholder={isLoading ? 'A IA está a gerar o conteúdo...' : placeholder}
-        className={`w-full h-40 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${hasError ? 'border-red-500 ring-red-200' : 'border-slate-200 focus:ring-blue-500'}`}
-        disabled={isLoading}
-      />
-    </div>
-  );
-};
-
-// --- Modal Component ---
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
-  maxWidth?: string;
-}
-
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, footer, maxWidth = 'max-w-xl' }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm">
-      <div className={`bg-white rounded-2xl shadow-2xl w-full sm:${maxWidth} flex flex-col max-h-[90vh] transition-all duration-300 transform scale-95 animate-scale-in`}>
-        <div className="flex items-center justify-between p-5 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-            <Icon name="times" className="text-2xl" />
-          </button>
-        </div>
-        <div className="p-6 overflow-y-auto">
-          {children}
-        </div>
-        {footer && (
-          <div className="p-5 border-t border-gray-200">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const PriorityIndicator: React.FC<{ priority?: Priority }> = ({ priority }) => {
-    const priorityStyles: Record<Priority, { color: string; label: string }> = {
-        low: { color: 'bg-green-500', label: 'Prioridade Baixa' },
-        medium: { color: 'bg-yellow-500', label: 'Prioridade Média' },
-        high: { color: 'bg-red-500', label: 'Prioridade Alta' },
-    };
-
-    if (!priority) return <div title="Prioridade não definida" className="w-3 h-3 rounded-full bg-slate-300 flex-shrink-0"></div>;
-
-    return (
-        <div
-            title={priorityStyles[priority].label}
-            className={`w-3 h-3 rounded-full ${priorityStyles[priority].color} flex-shrink-0`}
-        ></div>
-    );
-};
-
-// --- Component for viewing loaded ETP context ---
-const LoadedEtpViewer: React.FC<{ etp: SavedDocument }> = ({ etp }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
-
-    return (
-        <div className="bg-blue-50 border border-blue-200 p-4 sm:p-6 rounded-xl shadow-sm mb-6">
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full flex justify-between items-center text-left"
-                aria-expanded={isExpanded}
-                aria-controls={`etp-context-${etp.id}`}
-            >
-                <div>
-                    <h3 className="text-lg font-semibold text-blue-800">Contexto do ETP Carregado</h3>
-                    <p className="text-sm text-blue-700 font-medium truncate">{etp.name}</p>
-                </div>
-                <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} className="text-blue-600 text-xl transition-transform" />
-            </button>
-            <div
-                id={`etp-context-${etp.id}`}
-                className={`transition-all duration-500 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[5000px] mt-4 pt-4 border-t border-blue-200' : 'max-h-0'}`}
-            >
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {etpSections.map(section => {
-                        const content = etp.sections[section.id];
-                        if (content && String(content).trim()) {
-                            return (
-                                <div key={section.id}>
-                                    <h4 className="font-semibold text-slate-700 text-base mb-1">{section.title}</h4>
-                                    <div className="p-3 bg-white rounded-md border border-slate-200">
-                                        <p className="whitespace-pre-wrap text-slate-800 text-sm leading-relaxed">{content}</p>
-                                    </div>
-                                </div>
-                            );
-                        }
-                        return null;
-                    })}
-                </div>
-            </div>
-        </div>
-    );
-};
-
 
 // --- Main App Component ---
 const App: React.FC = () => {
@@ -1320,8 +1140,8 @@ Solicitação do usuário: "${refinePrompt}"
           <aside className={`fixed md:relative top-0 left-0 h-full w-full max-w-sm md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col transition-transform duration-300 z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
              <div className="flex items-center justify-between gap-3 mb-6 pt-10 md:pt-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
-                        <Icon name="brain" className="text-pink-600 text-xl" />
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Icon name="brain" className="text-blue-600 text-xl" />
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900">TR Genius</h1>
                 </div>
@@ -1681,7 +1501,7 @@ Solicitação do usuário: "${refinePrompt}"
                 </div>
             </header>
             
-            <div className={`${activeView === 'etp' ? 'block' : 'hidden'}`}>
+            <div className={`${activeView === 'etp' ? 'block animate-fade-in' : 'hidden'}`}>
                 {etpSections.map(section => {
                   if (section.isAttachmentSection) {
                     return (
@@ -1741,7 +1561,7 @@ Solicitação do usuário: "${refinePrompt}"
                 </div>
             </div>
 
-            <div className={`${activeView === 'tr' ? 'block' : 'hidden'}`}>
+            <div className={`${activeView === 'tr' ? 'block animate-fade-in' : 'hidden'}`}>
                 <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
                     <label htmlFor="etp-selector" className="block text-lg font-semibold text-slate-700 mb-3">1. Carregar ETP para Contexto</label>
                     <p className="text-sm text-slate-500 mb-4">Selecione um Estudo Técnico Preliminar (ETP) salvo para fornecer contexto à IA na geração do Termo de Referência (TR).</p>
@@ -1970,7 +1790,7 @@ Solicitação do usuário: "${refinePrompt}"
     {installPrompt && !isInstallBannerVisible && (
         <button
             onClick={handleInstallClick}
-            className="fixed bottom-44 right-8 bg-green-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40"
+            className="fixed bg-green-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40 bottom-[calc(11rem+env(safe-area-inset-bottom))] right-[calc(2rem+env(safe-area-inset-right))]"
             title="Instalar App"
           >
             <Icon name="download" />
@@ -1978,7 +1798,7 @@ Solicitação do usuário: "${refinePrompt}"
     )}
     <button
       onClick={() => setIsNewDocModalOpen(true)}
-      className="fixed bottom-28 right-8 bg-pink-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-pink-700 transition-transform transform hover:scale-110 z-40"
+      className="fixed bg-blue-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-blue-700 transition-transform transform hover:scale-110 z-40 bottom-[calc(7rem+env(safe-area-inset-bottom))] right-[calc(2rem+env(safe-area-inset-right))]"
       title="Criar Novo Documento"
     >
       <Icon name="plus" />
