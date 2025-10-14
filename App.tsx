@@ -116,7 +116,7 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
               disabled={isLoading}
               className="flex-1 flex items-center justify-center text-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[calc(50%-0.25rem)] sm:min-w-0"
             >
-              <Icon name={isLoading ? 'spinner' : 'wand-magic-sparkles'} className={`mr-2 ${isLoading ? 'fa-spin' : ''}`} />
+              <Icon name="wand-magic-sparkles" className="mr-2" />
               <span>{isLoading ? 'A gerar...' : 'Gerar com IA'}</span>
             </button>
           )}
@@ -127,7 +127,7 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
         value={value || ''}
         onChange={(e) => onChange(id, e.target.value)}
         placeholder={isLoading ? 'A IA está a gerar o conteúdo...' : placeholder}
-        className={`w-full h-40 p-3 bg-slate-50 border rounded-lg focus:ring-2 transition-colors ${hasError ? 'border-red-500 ring-red-200' : 'border-slate-200 focus:ring-blue-500'} ${isLoading ? 'animate-pulse-bg' : ''}`}
+        className={`w-full h-40 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${hasError ? 'border-red-500 ring-red-200' : 'border-slate-200 focus:ring-blue-500'}`}
         disabled={isLoading}
       />
     </div>
@@ -1264,4 +1264,683 @@ Solicitação do usuário: "${refinePrompt}"
             <Icon name={isSidebarOpen ? 'times' : 'bars'} />
           </button>
          
-          <aside className={`fixed md:relative top-0 left-0 h-full w-full max-w-sm md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col
+          <aside className={`fixed md:relative top-0 left-0 h-full w-full max-w-sm md:w-80 bg-white border-r border-slate-200 p-6 flex flex-col transition-transform duration-300 z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+             <div className="flex items-center justify-between gap-3 mb-6 pt-10 md:pt-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center">
+                        <Icon name="brain" className="text-pink-600 text-xl" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900">TR Genius</h1>
+                </div>
+                <button
+                    onClick={handleShare}
+                    className="w-9 h-9 flex items-center justify-center text-slate-400 rounded-full hover:bg-slate-100 hover:text-blue-600 transition-colors"
+                    title="Partilhar Aplicação"
+                >
+                    <Icon name="share-nodes" />
+                </button>
+            </div>
+            <p className="text-slate-500 text-sm mb-4 leading-relaxed">
+                Seu assistente para criar Estudos Técnicos e Termos de Referência, em conformidade com a <b>Lei 14.133/21</b>.
+            </p>
+            
+            <div className="flex-1 overflow-y-auto -mr-6 pr-6 space-y-1">
+                <div className="py-2">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Busca Rápida</h3>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filtrar por nome..."
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                            aria-label="Filtrar documentos por nome"
+                        />
+                        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+                </div>
+
+                <div className="py-2">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Filtro de Prioridade</h3>
+                    <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1 gap-1">
+                        {priorityFilters.map(filter => (
+                            <button
+                                key={filter.key}
+                                onClick={() => setPriorityFilter(filter.key)}
+                                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all w-full ${
+                                    priorityFilter === filter.key ? filter.activeClasses : filter.inactiveClasses
+                                }`}
+                            >
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="py-2">
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Ordenar por</h3>
+                    <div className="flex items-center justify-between bg-slate-100 rounded-lg p-1 gap-1">
+                        <button
+                            onClick={() => setSortOrder('updatedAt')}
+                            className={`px-2 py-1 text-xs font-semibold rounded-md transition-all w-full flex items-center justify-center gap-1 ${
+                                sortOrder === 'updatedAt' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:bg-slate-200'
+                            }`}
+                        >
+                            <Icon name="history" /> Data Modif.
+                        </button>
+                        <button
+                            onClick={() => setSortOrder('name')}
+                            className={`px-2 py-1 text-xs font-semibold rounded-md transition-all w-full flex items-center justify-center gap-1 ${
+                                sortOrder === 'name' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:bg-slate-200'
+                            }`}
+                        >
+                           <Icon name="sort-alpha-down" /> Nome (A-Z)
+                        </button>
+                    </div>
+                </div>
+
+                {/* Accordion Section: ETPs */}
+                <div className="py-1">
+                  <button onClick={() => toggleSidebarSection('etps')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-blue-50 transition-colors">
+                    <div className="flex items-center">
+                        <Icon name="file-alt" className="text-blue-500 w-5 text-center" />
+                        <h3 className="text-sm font-semibold text-blue-600 uppercase tracking-wider ml-2">ETPs Salvos</h3>
+                    </div>
+                    <Icon name={openSidebarSections.etps ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
+                  </button>
+                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.etps ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-2">
+                      {displayedETPs.length > 0 ? (
+                        <ul className="space-y-2">
+                          {displayedETPs.map(etp => (
+                            <li key={etp.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
+                              {editingDoc?.type === 'etp' && editingDoc?.id === etp.id ? (
+                                  <div className="w-full" onBlur={handleEditorBlur}>
+                                      <input
+                                          type="text"
+                                          value={editingDoc.name}
+                                          onChange={(e) => setEditingDoc({ ...editingDoc, name: e.target.value })}
+                                          onKeyDown={(e) => {
+                                              if (e.key === 'Enter') handleUpdateDocumentDetails();
+                                              if (e.key === 'Escape') setEditingDoc(null);
+                                          }}
+                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
+                                          autoFocus
+                                      />
+                                      <select
+                                          value={editingDoc.priority}
+                                          onChange={(e) => setEditingDoc(prev => prev ? { ...prev, priority: e.target.value as Priority } : null)}
+                                          className="w-full mt-2 p-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                                      >
+                                          <option value="high">{priorityLabels.high}</option>
+                                          <option value="medium">{priorityLabels.medium}</option>
+                                          <option value="low">{priorityLabels.low}</option>
+                                      </select>
+                                  </div>
+                              ) : (
+                                <div className="flex-grow truncate mr-2">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <PriorityIndicator priority={etp.priority} />
+                                        <span className="text-sm font-medium text-slate-700 truncate" title={etp.name}>{etp.name}</span>
+                                    </div>
+                                    {etp.updatedAt && (
+                                        <p className="text-xs text-slate-400 mt-1 pl-5" title={`Criado em: ${new Date(etp.createdAt).toLocaleString('pt-BR')}`}>
+                                            Modif.: {new Date(etp.updatedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    )}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <button onClick={() => handleStartEditing('etp', etp)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
+                                <button onClick={() => handleLoadDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
+                                <button onClick={() => { setPreviewContext({ type: 'etp', id: etp.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
+                                <button onClick={() => displayDocumentHistory(etp)} className="w-6 h-6 text-slate-500 hover:text-purple-600" title="Ver Histórico"><Icon name="history" /></button>
+                                <button onClick={() => handleDeleteDocument('etp', etp.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum ETP corresponde ao filtro.</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Accordion Section: TRs */}
+                <div className="py-1">
+                  <button onClick={() => toggleSidebarSection('trs')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-purple-50 transition-colors">
+                    <div className="flex items-center">
+                        <Icon name="gavel" className="text-purple-500 w-5 text-center" />
+                        <h3 className="text-sm font-semibold text-purple-600 uppercase tracking-wider ml-2">TRs Salvos</h3>
+                    </div>
+                    <Icon name={openSidebarSections.trs ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
+                  </button>
+                   <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.trs ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-2">
+                      {displayedTRs.length > 0 ? (
+                        <ul className="space-y-2">
+                          {displayedTRs.map(tr => (
+                            <li key={tr.id} className="group flex items-start justify-between bg-slate-50 p-2 rounded-lg">
+                               {editingDoc?.type === 'tr' && editingDoc?.id === tr.id ? (
+                                  <div className="w-full" onBlur={handleEditorBlur}>
+                                      <input
+                                          type="text"
+                                          value={editingDoc.name}
+                                          onChange={(e) => setEditingDoc({ ...editingDoc, name: e.target.value })}
+                                          onKeyDown={(e) => {
+                                              if (e.key === 'Enter') handleUpdateDocumentDetails();
+                                              if (e.key === 'Escape') setEditingDoc(null);
+                                          }}
+                                          className="text-sm font-medium w-full bg-white border border-blue-500 rounded px-1"
+                                          autoFocus
+                                      />
+                                      <select
+                                          value={editingDoc.priority}
+                                          onChange={(e) => setEditingDoc(prev => prev ? { ...prev, priority: e.target.value as Priority } : null)}
+                                          className="w-full mt-2 p-1 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
+                                      >
+                                          <option value="high">{priorityLabels.high}</option>
+                                          <option value="medium">{priorityLabels.medium}</option>
+                                          <option value="low">{priorityLabels.low}</option>
+                                      </select>
+                                  </div>
+                              ) : (
+                                <div className="flex-grow truncate mr-2">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <PriorityIndicator priority={tr.priority} />
+                                        <span className="text-sm font-medium text-slate-700 truncate" title={tr.name}>{tr.name}</span>
+                                    </div>
+                                    {tr.updatedAt && (
+                                        <p className="text-xs text-slate-400 mt-1 pl-5" title={`Criado em: ${new Date(tr.createdAt).toLocaleString('pt-BR')}`}>
+                                            Modif.: {new Date(tr.updatedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                    )}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <button onClick={() => handleStartEditing('tr', tr)} className="w-6 h-6 text-slate-500 hover:text-yellow-600" title="Renomear"><Icon name="pencil-alt" /></button>
+                                <button onClick={() => handleLoadDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-blue-600" title="Carregar"><Icon name="upload" /></button>
+                                <button onClick={() => { setPreviewContext({ type: 'tr', id: tr.id }); setIsPreviewModalOpen(true); }} className="w-6 h-6 text-slate-500 hover:text-green-600" title="Pré-visualizar"><Icon name="eye" /></button>
+                                <button onClick={() => displayDocumentHistory(tr)} className="w-6 h-6 text-slate-500 hover:text-purple-600" title="Ver Histórico"><Icon name="history" /></button>
+                                <button onClick={() => handleDeleteDocument('tr', tr.id)} className="w-6 h-6 text-slate-500 hover:text-red-600" title="Apagar"><Icon name="trash" /></button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <p className="text-sm text-slate-400 italic px-2">Nenhum TR corresponde ao filtro.</p>}
+                    </div>
+                   </div>
+                </div>
+                
+                <div className="py-2 border-t mt-2">
+                    <div className="flex items-center text-slate-500 px-2 mt-2">
+                        <Icon name="database" className="w-5 text-center" />
+                        <h3 className="text-sm font-semibold uppercase tracking-wider ml-2">Base de Conhecimento</h3>
+                    </div>
+                </div>
+
+                {/* Core Knowledge Base File */}
+                {uploadedFiles.find(f => f.isCore) && (
+                    <div className="px-2 py-1">
+                        <div className="flex items-center justify-between bg-slate-100 p-2 rounded-lg border border-slate-200">
+                            <label className="flex items-center gap-2 text-sm font-medium text-slate-700 truncate cursor-not-allowed">
+                                <input
+                                    type="checkbox"
+                                    checked
+                                    disabled
+                                    className="form-checkbox h-4 w-4 text-slate-400 border-slate-300 rounded"
+                                    title="Sempre ativo"
+                                />
+                                <span className="truncate text-slate-600" title={uploadedFiles.find(f => f.isCore)?.name}>{uploadedFiles.find(f => f.isCore)?.name}</span>
+                            </label>
+                            <div className="flex items-center justify-center w-6 h-6 flex-shrink-0">
+                                <Icon name="lock" className="text-slate-400" title="Base de Conhecimento Principal (Não pode ser removida)" />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Accordion Section: RAG */}
+                <div className="py-1">
+                  <button onClick={() => toggleSidebarSection('rag')} className="w-full flex justify-between items-center text-left p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                     <div className="flex items-center">
+                        <Icon name="book" className="text-slate-500 w-5 text-center" />
+                        <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider ml-2">Documentos de Apoio (RAG)</h3>
+                    </div>
+                    <Icon name={openSidebarSections.rag ? 'chevron-up' : 'chevron-down'} className="text-slate-400 transition-transform" />
+                  </button>
+                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${openSidebarSections.rag ? 'max-h-[1000px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                    <div className="space-y-2">
+                      {processingFiles.length > 0 && (
+                        <div className="mb-3 p-2 bg-slate-100 rounded-lg">
+                          <h4 className="text-xs font-bold text-slate-600 mb-2">A processar ficheiros...</h4>
+                           <div className="w-full bg-slate-200 rounded-full h-1.5 mb-2">
+                              <div 
+                                className="bg-blue-600 h-1.5 rounded-full transition-all duration-500" 
+                                style={{ width: `${(processingFiles.filter(f => f.status !== 'processing').length / processingFiles.length) * 100}%` }}
+                              ></div>
+                          </div>
+                          <ul className="space-y-1">
+                              {processingFiles.map(file => (
+                                  <li key={file.name} className="flex items-center text-xs justify-between">
+                                    <div className="flex items-center truncate">
+                                      {file.status === 'processing' && <Icon name="spinner" className="fa-spin text-slate-400 w-4" />}
+                                      {file.status === 'success' && <Icon name="check-circle" className="text-green-500 w-4" />}
+                                      {file.status === 'error' && <Icon name="exclamation-circle" className="text-red-500 w-4" />}
+                                      <span className="ml-2 truncate flex-1">{file.name}</span>
+                                    </div>
+                                      {file.status === 'error' && <span className="ml-2 text-red-600 font-semibold flex-shrink-0">{file.message}</span>}
+                                  </li>
+                              ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {uploadedFiles.filter(f => !f.isCore).length === 0 && processingFiles.length === 0 && (
+                          <p className="text-sm text-slate-400 italic px-2">Nenhum ficheiro carregado.</p>
+                      )}
+
+                      {uploadedFiles
+                        .map((file, index) => ({ file, originalIndex: index }))
+                        .filter(({ file }) => !file.isCore)
+                        .map(({ file, originalIndex }) => (
+                          <div key={originalIndex} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 truncate cursor-pointer">
+                                  <input
+                                      type="checkbox"
+                                      checked={file.selected}
+                                      onChange={() => handleToggleFileSelection(originalIndex)}
+                                      className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                                  />
+                                  <span className="truncate">{file.name}</span>
+                              </label>
+                              <button onClick={() => handleDeleteFile(originalIndex)} className="w-6 h-6 text-slate-500 hover:text-red-600 flex-shrink-0"><Icon name="trash" /></button>
+                          </div>
+                        ))
+                      }
+                      <label className="mt-2 w-full flex items-center justify-center px-4 py-3 bg-blue-50 border-2 border-dashed border-blue-200 text-blue-600 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors">
+                          <Icon name="upload" className="mr-2" />
+                          <span className="text-sm font-semibold">Carregar ficheiros</span>
+                          <input type="file" className="hidden" multiple onChange={handleFileUpload} accept=".pdf,.docx,.txt" />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+            </div>
+            <div className="mt-auto pt-4 border-t border-slate-200 flex items-center gap-2">
+                <button
+                    onClick={() => setIsInfoModalOpen(true)}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                    title="Informações"
+                >
+                    <Icon name="info-circle" />
+                    Sobre
+                </button>
+                <button
+                    onClick={handleLogout}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-red-100 hover:text-red-700 transition-colors"
+                >
+                    <Icon name="sign-out-alt" />
+                    Sair
+                </button>
+            </div>
+          </aside>
+          
+          <main className="flex-1 p-6 pb-28 md:p-10 overflow-y-auto" onClick={() => { if(window.innerWidth < 768) setIsSidebarOpen(false) }}>
+             <header className="flex justify-between items-center mb-8">
+                <div className="w-full">
+                  <div className="border-b border-slate-200">
+                    <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                      <button
+                        onClick={() => switchView('etp')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors ${
+                          activeView === 'etp'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        Gerador de ETP
+                      </button>
+                      <button
+                        onClick={() => switchView('tr')}
+                        className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg transition-colors ${
+                           activeView === 'tr'
+                            ? 'border-blue-600 text-blue-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        Gerador de TR
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 ml-4 flex items-center">
+                    {isOnline ? (
+                        <div className="flex items-center justify-center w-8 h-8 md:w-auto md:px-2 md:py-1 md:gap-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full" title="A ligação à Internet está ativa.">
+                            <Icon name="wifi" />
+                            <span className="hidden md:inline">Online</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center w-8 h-8 md:w-auto md:px-2 md:py-1 md:gap-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded-full" title="Sem ligação à Internet. As funcionalidades online estão desativadas.">
+                            <Icon name="wifi-slash" />
+                            <span className="hidden md:inline">Offline</span>
+                        </div>
+                    )}
+                </div>
+            </header>
+            
+            <div className={`${activeView === 'etp' ? 'block' : 'hidden'}`}>
+                {etpSections.map(section => {
+                  if (section.isAttachmentSection) {
+                    return (
+                        <div key={section.id} className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
+                            <div className="flex justify-between items-center mb-3">
+                                 <div className="flex items-center gap-2">
+                                    <label className="block text-lg font-semibold text-slate-700">{section.title}</label>
+                                    {section.tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={section.tooltip} />}
+                                 </div>
+                            </div>
+                            <textarea
+                                id={section.id}
+                                value={etpSectionsContent[section.id] || ''}
+                                onChange={(e) => handleSectionChange('etp', section.id, e.target.value)}
+                                placeholder={section.placeholder}
+                                className="w-full h-24 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors border-slate-200 focus:ring-blue-500 mb-4"
+                            />
+                            
+                            <AttachmentManager
+                                attachments={etpAttachments}
+                                onAttachmentsChange={setEtpAttachments}
+                                onPreview={setViewingAttachment}
+                                setMessage={setMessage}
+                            />
+                        </div>
+                    );
+                  }
+                  return (
+                    <Section
+                        key={section.id}
+                        id={section.id}
+                        title={section.title}
+                        placeholder={section.placeholder}
+                        value={etpSectionsContent[section.id]}
+                        onChange={(id, value) => handleSectionChange('etp', id, value)}
+                        onGenerate={() => handleGenerate('etp', section.id, section.title)}
+                        hasGen={section.hasGen}
+                        onAnalyze={() => handleRiskAnalysis('etp', section.id, section.title)}
+                        hasRiskAnalysis={section.hasRiskAnalysis}
+                        isLoading={loadingSection === section.id}
+                        onEdit={() => handleOpenEditModal('etp', section.id, section.title)}
+                        hasError={validationErrors.has(section.id)}
+                        tooltip={section.tooltip}
+                    />
+                  );
+                })}
+                <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-slate-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-6" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                    <div className="grid grid-cols-2 gap-3 md:flex md:items-center">
+                        <span className="hidden md:block text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
+                        <button onClick={handleClearForm('etp')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors flex items-center justify-center gap-2">
+                            <Icon name="eraser" /> Limpar Formulário
+                        </button>
+                        <button onClick={() => handleSaveDocument('etp')} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                            <Icon name="save" /> Salvar ETP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className={`${activeView === 'tr' ? 'block' : 'hidden'}`}>
+                <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
+                    <label htmlFor="etp-selector" className="block text-lg font-semibold text-slate-700 mb-3">1. Carregar ETP para Contexto</label>
+                    <p className="text-sm text-slate-500 mb-4">Selecione um Estudo Técnico Preliminar (ETP) salvo para fornecer contexto à IA na geração do Termo de Referência (TR).</p>
+                    <select
+                        id="etp-selector"
+                        onChange={(e) => handleLoadEtpForTr(e.target.value)}
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        defaultValue=""
+                    >
+                        <option value="">-- Selecione um ETP --</option>
+                        {savedETPs.map(etp => (
+                            <option key={etp.id} value={etp.id}>{etp.name}</option>
+                        ))}
+                    </select>
+                    {loadedEtpForTr && (
+                        <div className="mt-4 p-3 bg-green-50 text-green-800 border-l-4 border-green-500 rounded-r-lg">
+                            <p className="font-semibold">ETP "{loadedEtpForTr.name}" carregado com sucesso.</p>
+                        </div>
+                    )}
+                </div>
+
+                {trSections.map(section => {
+                  if (section.isAttachmentSection) {
+                    return (
+                        <div key={section.id} className="bg-white p-6 rounded-xl shadow-sm mb-6 transition-all hover:shadow-md">
+                            <div className="flex justify-between items-center mb-3 flex-wrap gap-y-3">
+                                 <div className="flex items-center gap-2">
+                                    <label className="block text-lg font-semibold text-slate-700">{section.title}</label>
+                                    {section.tooltip && <Icon name="question-circle" className="text-slate-400 cursor-help" title={section.tooltip} />}
+                                 </div>
+                                 <button
+                                    onClick={handleImportEtpAttachments}
+                                    disabled={!loadedEtpForTr}
+                                    className="px-3 py-2 text-xs font-semibold text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Importar todos os anexos do ETP carregado"
+                                 >
+                                    <Icon name="file-import" className="mr-2" />
+                                    Importar do ETP
+                                 </button>
+                            </div>
+                            <textarea
+                                id={section.id}
+                                value={trSectionsContent[section.id] || ''}
+                                onChange={(e) => handleSectionChange('tr', section.id, e.target.value)}
+                                placeholder={section.placeholder}
+                                className="w-full h-24 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors border-slate-200 focus:ring-blue-500 mb-4"
+                            />
+                            
+                            <AttachmentManager
+                                attachments={trAttachments}
+                                onAttachmentsChange={setTrAttachments}
+                                onPreview={setViewingAttachment}
+                                setMessage={setMessage}
+                            />
+                        </div>
+                    );
+                  }
+                  return (
+                    <Section
+                        key={section.id}
+                        id={section.id}
+                        title={section.title}
+                        placeholder={section.placeholder}
+                        value={trSectionsContent[section.id]}
+                        onChange={(id, value) => handleSectionChange('tr', id, value)}
+                        onGenerate={() => handleGenerate('tr', section.id, section.title)}
+                        hasGen={section.hasGen}
+                        isLoading={loadingSection === section.id}
+                        onAnalyze={() => handleRiskAnalysis('tr', section.id, section.title)}
+                        hasRiskAnalysis={section.hasRiskAnalysis}
+                        onEdit={() => handleOpenEditModal('tr', section.id, section.title)}
+                        hasError={validationErrors.has(section.id)}
+                        tooltip={section.tooltip}
+                    />
+                  );
+                })}
+                <div className="fixed bottom-0 left-0 right-0 z-10 bg-white p-4 border-t border-slate-200 md:relative md:bg-transparent md:p-0 md:border-none md:mt-6" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                    <div className="grid grid-cols-2 gap-3 md:flex md:items-center">
+                        <span className="hidden md:block text-sm text-slate-500 italic mr-auto transition-colors">{autoSaveStatus}</span>
+                        <button onClick={handleClearForm('tr')} className="bg-slate-200 text-slate-700 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors flex items-center justify-center gap-2">
+                            <Icon name="eraser" /> Limpar Formulário
+                        </button>
+                        <button onClick={() => handleSaveDocument('tr')} className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                            <Icon name="save" /> Salvar TR
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+             <footer className="text-center mt-8 pt-6 border-t border-slate-200 text-slate-500 text-sm">
+                <a href="https://wa.me/5584999780963" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
+                    Desenvolvido por Danilo Arruda
+                </a>
+            </footer>
+          </main>
+      </div>
+
+      <Modal isOpen={isInfoModalOpen} onClose={() => setIsInfoModalOpen(false)} title="Sobre o TR Genius" maxWidth="max-w-2xl">
+          <div className="space-y-4 text-slate-600">
+              <p>O <b>TR Genius</b> é o seu assistente inteligente para a elaboração de documentos de contratação pública, totalmente alinhado com a Nova Lei de Licitações e Contratos (Lei 14.133/21).</p>
+                <ul className="list-none space-y-2">
+                    <li className="flex items-start"><Icon name="wand-magic-sparkles" className="text-blue-500 mt-1 mr-3" /> <div><b>Geração de ETP e TR com IA:</b> Crie secções inteiras dos seus documentos com um clique, com base no contexto que fornecer.</div></li>
+                    <li className="flex items-start"><Icon name="shield-alt" className="text-blue-500 mt-1 mr-3" /> <div><b>Análise de Riscos:</b> Identifique e mitigue potenciais problemas no seu projeto antes mesmo de ele começar.</div></li>
+                    <li className="flex items-start"><Icon name="check-double" className="text-blue-500 mt-1 mr-3" /> <div><b>Verificador de Conformidade:</b> Garanta que os seus Termos de Referência estão em conformidade com a legislação vigente.</div></li>
+                    <li className="flex items-start"><Icon name="file-alt" className="text-blue-500 mt-1 mr-3" /> <div><b>Contexto com Ficheiros:</b> Faça o upload de documentos para que a IA tenha um conhecimento ainda mais aprofundado sobre a sua necessidade específica.</div></li>
+                </ul>
+              <p>Esta ferramenta foi projetada para otimizar o seu tempo, aumentar a qualidade dos seus documentos e garantir a segurança jurídica das suas contratações.</p>
+          </div>
+      </Modal>
+
+      <Modal isOpen={!!message} onClose={() => setMessage(null)} title={message?.title || ''}>
+        <p className="whitespace-pre-wrap">{message?.text}</p>
+        <div className="flex justify-end mt-4">
+            <button onClick={() => setMessage(null)} className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition-colors">OK</button>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={isPreviewModalOpen} 
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setViewingAttachment(null);
+          setSummaryState({ loading: false, content: null });
+        }} 
+        title="Pré-visualização do Documento" 
+        maxWidth="max-w-3xl"
+        footer={
+          <div className="flex justify-end">
+            <button
+              onClick={handleExportToPDF}
+              className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              <Icon name="file-pdf" className="mr-2" /> Exportar para PDF
+            </button>
+          </div>
+        }
+      >
+          {renderPreviewContent()}
+      </Modal>
+      
+      <Modal isOpen={isEditModalOpen} onClose={closeEditModal} title={`Editar: ${editingContent?.title}`} maxWidth="max-w-3xl">
+        {editingContent && (
+          <div>
+            <textarea
+              value={editingContent.text}
+              onChange={(e) => setEditingContent({ ...editingContent, text: e.target.value })}
+              className="w-full h-64 p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors mb-4"
+              disabled={isRefining}
+            />
+            <div className="bg-slate-100 p-4 rounded-lg mb-4">
+              <label htmlFor="refine-prompt" className="block text-sm font-semibold text-slate-600 mb-2">Peça à IA para refinar o texto acima:</label>
+              <div className="flex gap-2">
+                <input
+                  id="refine-prompt"
+                  type="text"
+                  value={refinePrompt}
+                  onChange={(e) => setRefinePrompt(e.target.value)}
+                  placeholder="Ex: 'Torne o tom mais formal' ou 'Adicione um parágrafo sobre sustentabilidade'"
+                  className="flex-grow p-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-purple-500"
+                  disabled={isRefining}
+                />
+                <button
+                  onClick={handleRefineText}
+                  disabled={!refinePrompt || isRefining}
+                  className="bg-purple-600 text-white font-bold py-2 px-3 md:px-4 rounded-lg hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 flex items-center justify-center"
+                >
+                  <Icon name="wand-magic-sparkles" className="md:mr-2" />
+                  <span className="hidden md:inline">
+                    {isRefining ? 'A refinar...' : 'Assim mas...'}
+                  </span>
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={closeEditModal} className="bg-transparent border border-slate-400 text-slate-600 font-bold py-2 px-4 rounded-lg hover:bg-slate-100 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleSaveChanges} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                <Icon name="save" className="mr-2" /> Salvar Alterações
+              </button>
+            </div>
+          </div>
+        )}
+    </Modal>
+
+      <Modal isOpen={!!analysisContent.content} onClose={() => setAnalysisContent({title: '', content: null})} title={analysisContent.title} maxWidth="max-w-3xl">
+          <div className="bg-slate-50 p-4 rounded-lg max-h-[60vh] overflow-y-auto">
+            <pre className="whitespace-pre-wrap word-wrap font-sans text-sm text-slate-700">{analysisContent.content}</pre>
+          </div>
+      </Modal>
+
+      <Modal 
+        isOpen={!!historyModalContent} 
+        onClose={() => setHistoryModalContent(null)} 
+        title={`Histórico de: ${historyModalContent?.name}`}
+        maxWidth="max-w-6xl"
+      >
+        {historyModalContent && <HistoryViewer document={historyModalContent} allSections={[...etpSections, ...trSections]} />}
+      </Modal>
+
+    <Modal isOpen={isNewDocModalOpen} onClose={() => setIsNewDocModalOpen(false)} title="Criar Novo Documento">
+      <div className="space-y-4">
+        <p className="text-slate-600">Qual tipo de documento você gostaria de criar? O formulário atual será limpo.</p>
+        <div className="flex flex-col space-y-3">
+            <button 
+                onClick={() => handleCreateNewDocument('etp')}
+                className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center"
+            >
+                <Icon name="file-alt" className="text-blue-500 text-2xl mr-4" />
+                <div>
+                    <p className="font-bold text-blue-800">Estudo Técnico Preliminar (ETP)</p>
+                    <p className="text-sm text-blue-600">Para planear e fundamentar a sua contratação.</p>
+                </div>
+            </button>
+            <button 
+                onClick={() => handleCreateNewDocument('tr')}
+                className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center"
+            >
+                <Icon name="gavel" className="text-purple-500 text-2xl mr-4" />
+                <div>
+                    <p className="font-bold text-purple-800">Termo de Referência (TR)</p>
+                    <p className="text-sm text-purple-600">Para detalhar o objeto e as regras da licitação.</p>
+                </div>
+            </button>
+        </div>
+      </div>
+    </Modal>
+    
+    {installPrompt && !isInstallBannerVisible && (
+        <button
+            onClick={handleInstallClick}
+            className="fixed bottom-44 right-8 bg-green-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl hover:bg-green-700 transition-transform transform hover:scale-110 z-40"
+            title="Instalar App"
+          >
+            <Icon name="download" />
+        </button>
+    )}
+    <button
+      onClick={() => setIsNewDocModalOpen(true)}
+      className="fixed bottom-28 right-8 bg-pink-600 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-pink-700 transition-transform transform hover:scale-110 z-40"
+      title="Criar Novo Documento"
+    >
+      <Icon name="plus" />
+    </button>
+    {installPrompt && isInstallBannerVisible && (
+        <InstallPWA
+            onInstall={handleInstallClick}
+            onDismiss={handleDismissInstallBanner}
+        />
+    )}
+    </div>
+  );
+};
+
+export default App;
