@@ -1,10 +1,14 @@
-
 import { GoogleGenAI } from "@google/genai";
 
-// FIX: Refactored to align with @google/genai guidelines.
-// The API key is now sourced from `process.env.API_KEY` instead of being hardcoded.
-// This resolves the TypeScript comparison errors and removes the need for placeholder checks and custom error messages related to a missing key.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// APLICAÇÃO EM FASE DE TESTES: Mantenha a chave aqui, conforme solicitado.
+// Para produção, mova para uma variável de ambiente (process.env.API_KEY).
+const API_KEY = "COLOQUE_SUA_CHAVE_API_AQUI";
+
+if (API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI") {
+  console.warn("Chave de API do Gemini não configurada. Substitua o placeholder em services/geminiService.ts.");
+}
+
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export async function callGemini(prompt: string): Promise<string> {
   try {
@@ -33,8 +37,8 @@ export async function callGemini(prompt: string): Promise<string> {
 
     const errorMessage = error.message || '';
 
-    if (errorMessage.includes('API key not valid')) {
-        return `Erro: A chave de API do Gemini não é válida ou não foi configurada.`;
+    if (errorMessage.includes('API key not valid') || API_KEY === "COLOQUE_SUA_CHAVE_API_AQUI") {
+        return `Erro: A chave de API do Gemini não é válida ou não foi configurada. Por favor, edite o ficheiro 'services/geminiService.ts' e substitua o valor da constante 'API_KEY' pela sua chave.`;
     }
     
     if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
