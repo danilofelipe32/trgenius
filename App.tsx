@@ -121,14 +121,32 @@ const Section: React.FC<SectionProps> = ({ id, title, placeholder, value, onChan
           )}
         </div>
       </div>
-      <textarea
-        id={id}
-        value={value || ''}
-        onChange={(e) => onChange(id, e.target.value)}
-        placeholder={isLoading ? 'A IA está a gerar o conteúdo...' : placeholder}
-        className={`w-full h-40 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${hasError ? 'border-red-500 ring-red-200' : 'border-slate-200 focus:ring-blue-500'}`}
-        disabled={isLoading}
-      />
+      <div className="relative">
+        <textarea
+            id={id}
+            value={value || ''}
+            onChange={(e) => onChange(id, e.target.value)}
+            placeholder={placeholder}
+            className={`w-full h-40 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-all duration-300 ${hasError ? 'border-red-500 ring-red-200' : 'border-slate-200 focus:ring-blue-500'} ${isLoading ? 'blur-[2px]' : ''}`}
+            disabled={isLoading}
+        />
+        {isLoading && (
+            <div
+                className="absolute inset-0 bg-slate-100/70 rounded-lg flex flex-col items-center justify-center text-center p-4 overflow-hidden"
+                style={{ animation: 'fade-in 0.3s ease-out' }}
+            >
+                <div 
+                    className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                    style={{ animation: 'shimmer 2s infinite linear', backgroundSize: '1000px 100%' }}
+                ></div>
+                <div className="relative z-10">
+                    <Icon name="wand-magic-sparkles" className="text-3xl text-blue-500 mb-3 animate-pulse" />
+                    <p className="font-semibold text-slate-700">A IA está a gerar o conteúdo...</p>
+                    <p className="text-sm text-slate-500 mt-1">Por favor, aguarde um momento.</p>
+                </div>
+            </div>
+        )}
+      </div>
     </div>
   );
 };
