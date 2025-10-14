@@ -10,7 +10,6 @@ import { AttachmentManager } from './components/AttachmentManager';
 import InstallPWA from './components/InstallPWA';
 import { HistoryViewer } from './components/HistoryViewer';
 import { etpSections, trSections } from './config/sections';
-import lei14133 from './lei14133.json';
 
 declare const mammoth: any;
 
@@ -260,7 +259,7 @@ const PriorityIndicator: React.FC<{ priority?: Priority }> = ({ priority }) => {
 // --- Main App Component ---
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [activeView, setActiveView] = useState<DocumentType>('etp');
+  const [activeView, setActiveView] = useState<DocumentType | 'rag'>('etp');
   
   // State for documents
   const [savedETPs, setSavedETPs] = useState<SavedDocument[]>([]);
@@ -301,13 +300,14 @@ const App: React.FC = () => {
   const [isRefining, setIsRefining] = useState(false);
 
   // Inline rename state
-  const [editingDoc, setEditingDoc] = useState<{ type: DocumentType; id: number; name: string; priority: Priority; } | null>(null);
+  const [editingDoc, setEditingDoc] = useState<{ type: DocumentType; id: number; name: string; priority?: Priority; } | null>(null);
 
   // Auto-save state
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>('Salvo');
   const debounceTimeoutRef = useRef<number | null>(null);
-  const etpContentRef = useRef(etpSectionsContent);
-  const trContentRef = useRef(trSectionsContent);
+  
+  // RAG file input ref
+  const ragFileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter and Sort state
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
@@ -315,10 +315,10 @@ const App: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'updatedAt' | 'name'>('updatedAt');
   
   // Preview State
-  const [previewContent, setPreviewContent] = useState<{ type: 'html' | 'text'; content: string } | null>(null);
+  const [previewContent, setPreviewContent] = useState<{ type: 'html' | 'text' | 'pdf' | 'image' ; content: string } | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   
-  const activeDocType = activeView === 'rag' ? 'etp' : activeView; // fallback for RAG view
+  const activeDocType = activeView === 'rag' ? (currentDocId.etp ? 'etp' : 'tr') : activeView;
   const activeSections = activeDocType === 'etp' ? etpSections : trSections;
   const activeSectionsContent = activeDocType === 'etp' ? etpSectionsContent : trSectionsContent;
   const activeAttachments = activeDocType === 'etp' ? etpAttachments : trAttachments;
@@ -348,6 +348,14 @@ const App: React.FC = () => {
   const handleLogout = () => {
     sessionStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
+    // Reset state
+    setSavedETPs([]);
+    setSavedTRs([]);
+    setEtpSectionsContent({});
+    setTrSectionsContent({});
+    setEtpAttachments([]);
+    setTrAttachments([]);
+    setCurrentDocId({etp: null, tr: null});
   };
   
   const showMessage = (title: string, text: string, type: 'success' | 'error' = 'success') => {
@@ -432,19 +440,38 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
 
     const existingNames = uploadedFiles.map(f => f.name);
     
+    let allFiles = [...uploadedFiles];
     for (const file of fileList) {
         try {
             const processedFile = await processSingleUploadedFile(file, existingNames);
-            setUploadedFiles(prev => [...prev, processedFile]);
+            allFiles.push(processedFile);
             setProcessingFiles(prev => prev.map(p => p.name === file.name ? { ...p, status: 'success' } : p));
         } catch (error: any) {
             setProcessingFiles(prev => prev.map(p => p.name === file.name ? { ...p, status: 'error', message: error.message } : p));
         }
     }
+    setUploadedFiles(allFiles);
+    storage.saveStoredFiles(allFiles);
     
     setTimeout(() => setProcessingFiles([]), 5000); // Clear status after 5 seconds
   };
   
+  const handleToggleFileSelection = (indexToToggle: number) => {
+    const newFiles = uploadedFiles.map((file, index) => 
+        index === indexToToggle ? { ...file, selected: !file.selected } : file
+    );
+    setUploadedFiles(newFiles);
+    storage.saveStoredFiles(newFiles);
+  };
+  
+  const handleDeleteFile = (indexToDelete: number) => {
+    if (window.confirm("Tem a certeza de que pretende eliminar este ficheiro de apoio?")) {
+        const newFiles = uploadedFiles.filter((_, index) => index !== indexToDelete);
+        setUploadedFiles(newFiles);
+        storage.saveStoredFiles(newFiles);
+    }
+  };
+
   const handleSaveDoc = (isAutoSave = false) => {
     const docType = activeDocType;
     const content = docType === 'etp' ? etpSectionsContent : trSectionsContent;
@@ -590,7 +617,13 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
         
         // Load core RAG file
         try {
-            const coreFile = await processCoreFile(lei14133, 'Lei 14.133/21 (Referência)');
+            const response = await fetch('./lei14133.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const lei14133Data = await response.json();
+            const coreFile = await processCoreFile(lei14133Data, 'Lei 14.133/21 (Referência)');
+            
             const storedFiles = storage.getStoredFiles();
             // Ensure core file is always present and not duplicated
             const otherFiles = storedFiles.filter(f => !f.isCore);
@@ -636,13 +669,10 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
     };
 }, []);
 
-  // Auto-save Effects
-  useEffect(() => { etpContentRef.current = etpSectionsContent; }, [etpSectionsContent]);
-  useEffect(() => { trContentRef.current = trSectionsContent; }, [trSectionsContent]);
-  
+  // Auto-save Effect
   useEffect(() => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-      if (currentDocId.etp || currentDocId.tr) {
+      if ((currentDocId.etp || currentDocId.tr) && (Object.keys(etpSectionsContent).length > 0 || Object.keys(trSectionsContent).length > 0)) {
         debounceTimeoutRef.current = window.setTimeout(() => {
             setAutoSaveStatus('A salvar...');
             storage.saveFormState('etpFormState', etpSectionsContent);
@@ -651,7 +681,7 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
         }, 2000);
       }
       return () => { if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current); };
-  }, [etpSectionsContent, trSectionsContent, currentDocId]);
+  }, [etpSectionsContent, trSectionsContent, currentDocId.etp, currentDocId.tr]);
   
   // Attachment Preview Generator
   useEffect(() => {
@@ -666,7 +696,11 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
 
     (async () => {
         try {
-            if (type === 'text/plain' || name.toLowerCase().endsWith('.txt')) {
+            if (type.startsWith('image/')) {
+                setPreviewContent({ type: 'image', content: `data:${type};base64,${content}` });
+            } else if (type === 'application/pdf') {
+                setPreviewContent({ type: 'pdf', content: `data:application/pdf;base64,${content}` });
+            } else if (type === 'text/plain' || name.toLowerCase().endsWith('.txt')) {
                 setPreviewContent({ type: 'text', content: base64ToUtf8(content) });
             } else if (type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || name.toLowerCase().endsWith('.docx')) {
                 const arrayBuffer = base64ToArrayBuffer(content);
@@ -732,7 +766,7 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
     }
   };
 
-  const filteredDocs = (docs: SavedDocument[]) => {
+  const filteredDocs = useCallback((docs: SavedDocument[]) => {
     return docs
       .filter(doc => priorityFilter === 'all' || doc.priority === priorityFilter)
       .filter(doc => doc.name.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -742,7 +776,7 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
         }
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(); // default 'updatedAt'
       });
-  };
+  }, [priorityFilter, searchTerm, sortOrder]);
 
   if (!isAuthenticated) return <Login onLogin={handleLogin} />;
   
@@ -752,6 +786,58 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
     const docs = activeView === 'etp' ? savedETPs : savedTRs;
     return docs.find(d => d.id === docId)?.name || "Documento não encontrado";
   }, [activeView, currentDocId, savedETPs, savedTRs]);
+
+  // --- Reusable Sidebar Section ---
+  const SidebarSection: React.FC<{title: string; type: 'etps' | 'trs' | 'rag'; children: React.ReactNode; count: number;}> = ({title, type, children, count}) => (
+    <div>
+      <button onClick={() => setOpenSidebarSections(s => ({...s, [type]: !s[type]}))} className="w-full flex justify-between items-center text-left text-sm font-bold text-slate-500 hover:text-slate-800 p-2 rounded-md hover:bg-slate-100">
+        <span>{title} ({count})</span>
+        <Icon name={openSidebarSections[type] ? 'chevron-down' : 'chevron-right'} />
+      </button>
+      {openSidebarSections[type] && <div className="mt-2 space-y-1 pl-2 border-l-2 border-slate-200">{children}</div>}
+    </div>
+  );
+
+  // --- RAG file manager ---
+  const RagManager = () => (
+    <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Gerir Ficheiros de Apoio (RAG)</h2>
+        <p className="text-slate-600 mb-6 text-sm">Selecione os ficheiros que devem ser utilizados como contexto para a IA. O ficheiro da Lei 14.133/21 é essencial e está sempre selecionado.</p>
+        
+        <div className="mb-6">
+            <div
+                onClick={() => ragFileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 border-slate-300 hover:border-blue-400 hover:bg-slate-50"
+            >
+                <Icon name="cloud-upload-alt" className="text-4xl text-slate-400 mb-3" />
+                <p className="text-slate-600 text-center"><span className="font-semibold text-blue-600">Clique para carregar</span> ou arraste e solte</p>
+                <input ref={ragFileInputRef} type="file" multiple onChange={(e) => e.target.files && handleFileUpload(e.target.files)} className="hidden" />
+            </div>
+        </div>
+        
+        <div className="space-y-3">
+            {uploadedFiles.map((file, index) => (
+                <div key={file.name} className={`flex items-center p-3 rounded-lg border transition-colors ${file.selected ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <Icon name="file-alt" className="text-slate-500 mr-4 flex-shrink-0" />
+                    <div className="flex-grow truncate mr-4">
+                        <p className="font-semibold text-slate-800 truncate">{file.name}</p>
+                    </div>
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-600" title={file.isCore ? "Este ficheiro é essencial e não pode ser desmarcado" : "Usar este ficheiro como contexto para a IA"}>
+                            <input type="checkbox" checked={file.selected} disabled={file.isCore} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-5 w-5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                            <span className='hidden sm:inline'>Usar na IA</span>
+                        </label>
+                        {!file.isCore && (
+                            <button onClick={() => handleDeleteFile(index)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100" title="Remover ficheiro">
+                                <Icon name="trash" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+  );
 
   // Main Render
   return (
@@ -766,23 +852,107 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
         </div>
         
         {/* Document list, filters, etc */}
-        <div className="flex-grow overflow-y-auto pr-2">
+        <div className="flex-grow overflow-y-auto pr-2 -mr-2">
             <div className='space-y-4'>
                 <button onClick={() => setIsNewDocModalOpen(true)} className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
                     <Icon name="plus-circle" /> Novo Documento
                 </button>
                 {/* Filters */}
-                {/* ... */}
+                <div className="space-y-3 p-3 bg-slate-100 rounded-lg">
+                    <div className="relative">
+                        <input type="text" placeholder="Procurar documentos..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-blue-500 focus:border-blue-500"/>
+                        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                    </div>
+                    <div className="flex gap-2">
+                        <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value as any)} className="w-full text-sm bg-white border border-slate-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="all">Todas as Prioridades</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Média</option>
+                            <option value="low">Baixa</option>
+                        </select>
+                        <select value={sortOrder} onChange={e => setSortOrder(e.target.value as any)} className="w-full text-sm bg-white border border-slate-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="updatedAt">Ordenar por Data</option>
+                            <option value="name">Ordenar por Nome</option>
+                        </select>
+                    </div>
+                </div>
                 {/* ETPs */}
-                {/* ... */}
+                <SidebarSection title="Estudos Técnicos (ETP)" type="etps" count={filteredDocs(savedETPs).length}>
+                    {filteredDocs(savedETPs).map(doc => (
+                        <div key={doc.id} className={`group p-2 rounded-md transition-colors ${currentDocId.etp === doc.id ? 'bg-blue-100' : 'hover:bg-slate-100'}`}>
+                            {editingDoc?.id === doc.id && editingDoc.type === 'etp' ? (
+                                <div className="space-y-2">
+                                    <input type="text" value={editingDoc.name} onChange={e => setEditingDoc({...editingDoc, name: e.target.value})} className="w-full text-sm font-semibold p-1 border rounded" />
+                                    <select value={editingDoc.priority} onChange={e => setEditingDoc({...editingDoc, priority: e.target.value as Priority})} className="w-full text-xs p-1 border rounded bg-white">
+                                        {Object.entries(priorityLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                                    </select>
+                                    <div className="flex gap-2">
+                                        <button onClick={handleSaveEditedDoc} className="flex-1 text-xs bg-green-500 text-white rounded px-2 py-1">Guardar</button>
+                                        <button onClick={() => setEditingDoc(null)} className="flex-1 text-xs bg-slate-200 rounded px-2 py-1">Cancelar</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div onClick={() => handleLoadDoc('etp', doc.id)} className="flex items-center gap-2 cursor-pointer">
+                                        <PriorityIndicator priority={doc.priority} />
+                                        <span className="text-sm font-medium text-slate-700 flex-1 truncate">{doc.name}</span>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => setEditingDoc({type: 'etp', id: doc.id, name: doc.name, priority: doc.priority})} title="Editar Nome/Prioridade" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="edit" className="text-xs" /></button>
+                                        <button onClick={() => setHistoryModalContent(doc)} title="Ver Histórico" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="history" className="text-xs" /></button>
+                                        <button onClick={() => exportDocumentToPDF(doc, etpSections)} title="Exportar para PDF" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="file-pdf" className="text-xs" /></button>
+                                        <button onClick={() => handleDeleteDoc('etp', doc.id)} title="Eliminar" className="p-1.5 rounded hover:bg-red-100 text-slate-500 hover:text-red-600"><Icon name="trash" className="text-xs" /></button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ))}
+                </SidebarSection>
                 {/* TRs */}
-                {/* ... */}
+                 <SidebarSection title="Termos de Referência (TR)" type="trs" count={filteredDocs(savedTRs).length}>
+                    {filteredDocs(savedTRs).map(doc => (
+                         <div key={doc.id} className={`group p-2 rounded-md transition-colors ${currentDocId.tr === doc.id ? 'bg-blue-100' : 'hover:bg-slate-100'}`}>
+                            {editingDoc?.id === doc.id && editingDoc.type === 'tr' ? (
+                                <div className="space-y-2">
+                                    <input type="text" value={editingDoc.name} onChange={e => setEditingDoc({...editingDoc, name: e.target.value})} className="w-full text-sm font-semibold p-1 border rounded" />
+                                    <select value={editingDoc.priority} onChange={e => setEditingDoc({...editingDoc, priority: e.target.value as Priority})} className="w-full text-xs p-1 border rounded bg-white">
+                                        {Object.entries(priorityLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                                    </select>
+                                    <div className="flex gap-2">
+                                        <button onClick={handleSaveEditedDoc} className="flex-1 text-xs bg-green-500 text-white rounded px-2 py-1">Guardar</button>
+                                        <button onClick={() => setEditingDoc(null)} className="flex-1 text-xs bg-slate-200 rounded px-2 py-1">Cancelar</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div onClick={() => handleLoadDoc('tr', doc.id)} className="flex items-center gap-2 cursor-pointer">
+                                        <PriorityIndicator priority={doc.priority} />
+                                        <span className="text-sm font-medium text-slate-700 flex-1 truncate">{doc.name}</span>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => setEditingDoc({type: 'tr', id: doc.id, name: doc.name, priority: doc.priority})} title="Editar Nome/Prioridade" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="edit" className="text-xs" /></button>
+                                        <button onClick={() => setHistoryModalContent(doc)} title="Ver Histórico" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="history" className="text-xs" /></button>
+                                        <button onClick={() => exportDocumentToPDF(doc, trSections)} title="Exportar para PDF" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="file-pdf" className="text-xs" /></button>
+                                        <button onClick={() => handleDeleteDoc('tr', doc.id)} title="Eliminar" className="p-1.5 rounded hover:bg-red-100 text-slate-500 hover:text-red-600"><Icon name="trash" className="text-xs" /></button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ))}
+                </SidebarSection>
                 {/* RAG files */}
-                {/* ... */}
+                <SidebarSection title="Ficheiros de Apoio (RAG)" type="rag" count={uploadedFiles.length}>
+                    {uploadedFiles.map((file, index) => (
+                        <div key={file.name} className={`flex items-center gap-2 p-2 rounded-md ${activeView === 'rag' ? 'bg-blue-100' : ''}`} onClick={() => setActiveView('rag')}>
+                            <Icon name={file.isCore ? "bookmark" : "file-alt"} className="text-slate-500" />
+                            <span className="text-sm font-medium text-slate-700 flex-1 truncate">{file.name}</span>
+                        </div>
+                    ))}
+                </SidebarSection>
             </div>
         </div>
         <div className="text-center text-xs text-slate-400 pt-2 border-t">
-            Versão 1.0.0
+            Versão 1.0.1
         </div>
       </aside>
 
@@ -806,7 +976,7 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
                       <span>Offline</span>
                   </div>
               )}
-              <button onClick={() => handleSaveDoc()} className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+              <button onClick={() => handleSaveDoc()} disabled={autoSaveStatus === 'Salvo ✓'} className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
                   <Icon name="save" /> Salvar
               </button>
             </div>
@@ -817,15 +987,15 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
           {activeView !== 'rag' ? (
             <div>
               {(activeView === 'etp' && !currentDocId.etp) || (activeView === 'tr' && !currentDocId.tr) ? (
-                <div className="text-center text-slate-500 mt-16">
-                  <Icon name="file-alt" className="text-6xl mb-4" />
+                <div className="text-center text-slate-500 mt-16 flex flex-col items-center">
+                  <Icon name="file-alt" className="text-6xl mb-4 text-slate-300" />
                   <h3 className="text-xl font-bold">Nenhum documento aberto</h3>
                   <p>Crie um novo documento ou carregue um existente na barra lateral.</p>
                 </div>
               ) : (
                 currentSections.map(section => (
                   section.isAttachmentSection ? (
-                      <div key={section.id} className="bg-white p-6 rounded-xl shadow-sm mb-6">
+                      <div key={section.id} className="bg-white p-4 md:p-6 rounded-xl shadow-sm mb-6">
                           <h3 className="text-lg font-semibold text-slate-700 mb-4">{section.title}</h3>
                           <AttachmentManager
                               attachments={activeAttachments}
@@ -855,10 +1025,7 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
               )}
             </div>
           ) : (
-            <div className="bg-white p-6 rounded-xl shadow-sm">
-                <h2 className="text-2xl font-bold text-slate-800 mb-4">Gerir Ficheiros de Apoio (RAG)</h2>
-                {/* RAG File Manager UI here */}
-            </div>
+            <RagManager />
           )}
         </div>
       </main>
@@ -890,7 +1057,31 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
               }
           }}>
               <div className="space-y-4">
-                  {/* Form fields for new doc */}
+                  <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Tipo de Documento</label>
+                      <div className="flex gap-4">
+                          <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 transition-colors">
+                              <input type="radio" name="type" value="etp" required defaultChecked className="form-radio text-blue-600 focus:ring-blue-500" />
+                              <span><Icon name="file-alt" className="mr-2" />Estudo Técnico (ETP)</span>
+                          </label>
+                          <label className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer flex-1 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 transition-colors">
+                              <input type="radio" name="type" value="tr" required className="form-radio text-blue-600 focus:ring-blue-500" />
+                              <span><Icon name="file-signature" className="mr-2" />Termo de Referência (TR)</span>
+                          </label>
+                      </div>
+                  </div>
+                  <div>
+                      <label htmlFor="docName" className="block text-sm font-medium text-slate-700">Nome do Documento</label>
+                      <input type="text" id="docName" name="name" required placeholder="Ex: Contratação de serviço de limpeza" className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                  </div>
+                  <div>
+                      <label htmlFor="docPriority" className="block text-sm font-medium text-slate-700">Prioridade</label>
+                      <select id="docPriority" name="priority" defaultValue="medium" required className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white">
+                          <option value="high">Alta</option>
+                          <option value="medium">Média</option>
+                          <option value="low">Baixa</option>
+                      </select>
+                  </div>
               </div>
               <div className="mt-6 flex justify-end gap-2">
                   <button type="button" onClick={() => setIsNewDocModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200">Cancelar</button>
@@ -899,9 +1090,64 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
           </form>
       </Modal>
 
-      {/* Other modals: Edit, Preview, History etc. would go here */}
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title={`Editar/Refinar: ${editingContent?.title}`} maxWidth="max-w-3xl">
+          <div className="space-y-4">
+              <textarea value={editingContent?.text} onChange={e => setEditingContent(prev => prev ? {...prev, text: e.target.value} : null)} rows={10} className="w-full p-2 border rounded-md bg-slate-50"/>
+              <div className="flex gap-2 items-center">
+                  <input type="text" value={refinePrompt} onChange={e => setRefinePrompt(e.target.value)} placeholder="Instrução para refinar (ex: 'tornar mais conciso', 'adicionar detalhes sobre...', 'mudar para um tom mais formal')" className="flex-1 p-2 border rounded-md" />
+                  <button onClick={handleRefineContent} disabled={isRefining || !isOnline} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      {isRefining ? <Icon name="spinner" className="fa-spin" /> : <Icon name="wand-magic-sparkles" />}
+                  </button>
+              </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-2">
+              <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200">Cancelar</button>
+              <button type="button" onClick={handleAcceptRefinement} className="px-4 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700">Aceitar e Guardar</button>
+          </div>
+      </Modal>
+      
+      <Modal isOpen={!!historyModalContent} onClose={() => setHistoryModalContent(null)} title={`Histórico de: ${historyModalContent?.name}`} maxWidth="max-w-6xl">
+        {historyModalContent && <HistoryViewer document={historyModalContent} allSections={historyModalContent && savedETPs.some(d => d.id === historyModalContent.id) ? etpSections : trSections} />}
+      </Modal>
+      
+       <Modal isOpen={!!viewingAttachment} onClose={() => setViewingAttachment(null)} title={viewingAttachment?.name || 'Visualizador'} maxWidth="max-w-4xl">
+        {isLoadingPreview ? (
+            <div className="text-center p-8"><Icon name="spinner" className="fa-spin text-3xl text-slate-500" /></div>
+        ) : previewContent ? (
+            previewContent.type === 'html' ? <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: previewContent.content }} /> :
+            previewContent.type === 'text' ? <pre className="whitespace-pre-wrap text-sm">{previewContent.content}</pre> :
+            previewContent.type === 'image' ? <img src={previewContent.content} alt="preview" className="max-w-full h-auto rounded-lg" /> :
+            previewContent.type === 'pdf' ? <iframe src={previewContent.content} className="w-full h-[70vh]" title="preview" /> :
+            <p className="text-center p-4">Pré-visualização não suportada para este tipo de ficheiro.</p>
+        ) : (
+            <p className="text-center p-4">Não foi possível gerar a pré-visualização.</p>
+        )}
+      </Modal>
 
-      {isInstallBannerVisible && <InstallPWA onInstall={() => installPrompt?.prompt()} onDismiss={() => { setIsInstallBannerVisible(false); sessionStorage.setItem('pwaInstallDismissed', 'true'); }} />}
+      <Modal isOpen={!!analysisContent.content} onClose={() => setAnalysisContent({ title: '', content: null })} title={analysisContent.title}>
+          {analysisContent.content && <LinkedText text={analysisContent.content} />}
+      </Modal>
+
+      {message && (
+          <div className={`fixed top-5 right-5 z-50 p-4 rounded-lg shadow-lg animate-fade-in-out ${message.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+              <h4 className="font-bold">{message.title}</h4>
+              <p className="text-sm">{message.text}</p>
+          </div>
+      )}
+      <style>{`
+        @keyframes fade-in-out {
+          0% { opacity: 0; transform: translateY(-20px); }
+          10% { opacity: 1; transform: translateY(0); }
+          90% { opacity: 1; transform: translateY(0); }
+          100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .animate-fade-in-out {
+          animation: fade-in-out 5s ease-in-out forwards;
+        }
+      `}</style>
+
+
+      {isInstallBannerVisible && installPrompt && <InstallPWA onInstall={() => installPrompt?.prompt()} onDismiss={() => { setIsInstallBannerVisible(false); sessionStorage.setItem('pwaInstallDismissed', 'true'); }} />}
     </div>
   );
 };
