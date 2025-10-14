@@ -93,22 +93,3 @@ export const processSingleUploadedFile = async (
     throw new Error(error.message || `Não foi possível ler o ficheiro.`);
   }
 };
-
-export const processCoreFile = async (fileContent: any[], fileName: string): Promise<UploadedFile> => {
-  try {
-    const text = fileContent.map(page => page.content).join('\n\n');
-    if (!text || text.trim().length === 0) {
-        throw new Error('Ficheiro principal está vazio ou é ilegível.');
-    }
-    const chunks = chunkText(text);
-    return {
-      name: fileName,
-      chunks,
-      selected: true,
-      isCore: true // Sinalizador para identificar como ficheiro principal
-    };
-  } catch (error: any) {
-    console.error(`Erro ao processar o ficheiro principal ${fileName}:`, error);
-    throw new Error(error.message || `Não foi possível ler o ficheiro principal.`);
-  }
-};

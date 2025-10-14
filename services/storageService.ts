@@ -45,6 +45,9 @@ const saveDocuments = (key: string, docs: SavedDocument[]): void => {
     if (JSON.stringify(newDoc.attachments || []) !== JSON.stringify(oldDoc.attachments || [])) {
       changes.push('anexos atualizados');
     }
+    if (newDoc.isArchived !== oldDoc.isArchived) {
+      changes.push(newDoc.isArchived ? 'documento arquivado' : 'documento desarquivado');
+    }
 
     if (changes.length > 0) {
       const summary = `Alteração: ${changes.join(', ')}.`;

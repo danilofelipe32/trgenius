@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, Priority } from './types';
 import * as storage from './services/storageService';
 import { callGemini } from './services/geminiService';
-import { processSingleUploadedFile, processCoreFile } from './services/ragService';
+import { processSingleUploadedFile } from './services/ragService';
 import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
 import Login from './components/Login';
@@ -312,8 +312,14 @@ const App: React.FC = () => {
   // Filter and Sort state
   const [priorityFilter, setPriorityFilter] = useState<'all' | Priority>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState<'updatedAt' | 'name'>('updatedAt');
+  const [showArchived, setShowArchived] = useState(false);
   
+  // Drag and Drop state
+  const dragItem = useRef<{ type: DocumentType, id: number } | null>(null);
+  const dragOverItem = useRef<{ type: DocumentType, id: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+
   // Preview State
   const [previewContent, setPreviewContent] = useState<{ type: 'html' | 'text' | 'pdf' | 'image' ; content: string } | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
@@ -534,6 +540,7 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
   };
 
   const handleNewDoc = (type: DocumentType, name: string, priority: Priority) => {
+    const docs = type === 'etp' ? savedETPs : savedTRs;
     const newDoc: SavedDocument = {
         id: Date.now(),
         name,
@@ -543,6 +550,8 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
         sections: {},
         attachments: [],
         history: [],
+        order: docs.length,
+        isArchived: false,
     };
 
     if (type === 'etp') {
@@ -600,6 +609,61 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
     setEditingDoc(null);
   };
 
+  const handleToggleArchive = (docType: DocumentType, id: number) => {
+      const docs = docType === 'etp' ? savedETPs : savedTRs;
+      const setDocs = docType === 'etp' ? setSavedETPs : setSavedTRs;
+      const saveFn = docType === 'etp' ? storage.saveETPs : storage.saveTRs;
+
+      const updatedDocs = docs.map(doc => doc.id === id ? { ...doc, isArchived: !doc.isArchived } : doc);
+      
+      setDocs(updatedDocs);
+      saveFn(updatedDocs);
+  };
+  
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, docType: DocumentType, id: number) => {
+    dragItem.current = { type: docType, id };
+    setTimeout(() => setDragging(true), 0);
+  };
+
+  const handleDragEnter = (e: React.DragEvent, docType: DocumentType, id: number) => {
+    e.preventDefault();
+    if(dragItem.current?.type === docType) {
+        dragOverItem.current = { type: docType, id };
+    }
+  };
+
+  const handleDrop = (docType: DocumentType) => {
+    if (!dragItem.current || !dragOverItem.current || dragItem.current.type !== dragOverItem.current.type) {
+      return;
+    }
+    
+    const docs = docType === 'etp' ? [...savedETPs] : [...savedTRs];
+    const setDocs = docType === 'etp' ? setSavedETPs : setSavedTRs;
+    const saveFn = docType === 'etp' ? storage.saveETPs : storage.saveTRs;
+
+    const dragItemIndex = docs.findIndex(d => d.id === dragItem.current!.id);
+    const dragOverItemIndex = docs.findIndex(d => d.id === dragOverItem.current!.id);
+
+    if (dragItemIndex === -1 || dragOverItemIndex === -1 || dragItemIndex === dragOverItemIndex) {
+        return;
+    }
+
+    const [draggedItem] = docs.splice(dragItemIndex, 1);
+    docs.splice(dragOverItemIndex, 0, draggedItem);
+
+    const reorderedDocs = docs.map((doc, index) => ({ ...doc, order: index, updatedAt: new Date().toISOString() }));
+
+    setDocs(reorderedDocs);
+    saveFn(reorderedDocs);
+  };
+
+  const handleDragEnd = () => {
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDragging(false);
+  };
+
   // --- Effects ---
   useEffect(() => {
     const loggedIn = sessionStorage.getItem('isAuthenticated') === 'true';
@@ -609,32 +673,21 @@ Gere um texto técnico, formal e completo para a seção "${targetSection.title}
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    const loadInitialData = async () => {
+    const loadInitialData = () => {
         setSavedETPs(storage.getSavedETPs());
         setSavedTRs(storage.getSavedTRs());
         setEtpSectionsContent(storage.loadFormState('etpFormState') as Record<string, string> || {});
         setTrSectionsContent(storage.loadFormState('trFormState') as Record<string, string> || {});
         
-        // Load core RAG file
-        try {
-            const response = await fetch('./lei14133.json');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const lei14133Data = await response.json();
-            const coreFile = await processCoreFile(lei14133Data, 'Lei 14.133/21 (Referência)');
-            
-            const storedFiles = storage.getStoredFiles();
-            // Ensure core file is always present and not duplicated
-            const otherFiles = storedFiles.filter(f => !f.isCore);
-            const allFiles = [coreFile, ...otherFiles];
-            setUploadedFiles(allFiles);
-            storage.saveStoredFiles(allFiles);
-        } catch (error) {
-            console.error("Failed to load core RAG file:", error);
-            showMessage("Erro Crítico", "Não foi possível carregar o ficheiro da lei. A funcionalidade de IA pode ser afetada.", 'error');
-            setUploadedFiles(storage.getStoredFiles());
+        // Migration logic to remove the old hardcoded "lei14133.json" RAG file from user's local storage.
+        const storedFiles = storage.getStoredFiles();
+        const filteredFiles = storedFiles.filter(file => file.name !== 'lei14133.json');
+        
+        // If the file was found and removed, update storage.
+        if (filteredFiles.length < storedFiles.length) {
+          storage.saveStoredFiles(filteredFiles);
         }
+        setUploadedFiles(filteredFiles);
     };
 
     loadInitialData();
@@ -766,17 +819,13 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
     }
   };
 
-  const filteredDocs = useCallback((docs: SavedDocument[]) => {
+  const filteredDocs = useCallback((docs: SavedDocument[], isArchived: boolean) => {
     return docs
+      .filter(doc => (doc.isArchived || false) === isArchived)
       .filter(doc => priorityFilter === 'all' || doc.priority === priorityFilter)
       .filter(doc => doc.name.toLowerCase().includes(searchTerm.toLowerCase()))
-      .sort((a, b) => {
-        if (sortOrder === 'name') {
-          return a.name.localeCompare(b.name);
-        }
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(); // default 'updatedAt'
-      });
-  }, [priorityFilter, searchTerm, sortOrder]);
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [priorityFilter, searchTerm]);
 
   if (!isAuthenticated) return <Login onLogin={handleLogin} />;
   
@@ -802,7 +851,7 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
   const RagManager = () => (
     <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm">
         <h2 className="text-2xl font-bold text-slate-800 mb-2">Gerir Ficheiros de Apoio (RAG)</h2>
-        <p className="text-slate-600 mb-6 text-sm">Selecione os ficheiros que devem ser utilizados como contexto para a IA. O ficheiro da Lei 14.133/21 é essencial e está sempre selecionado.</p>
+        <p className="text-slate-600 mb-6 text-sm">Selecione os ficheiros que devem ser utilizados como contexto para a IA.</p>
         
         <div className="mb-6">
             <div
@@ -823,20 +872,60 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
                         <p className="font-semibold text-slate-800 truncate">{file.name}</p>
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0">
-                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-600" title={file.isCore ? "Este ficheiro é essencial e não pode ser desmarcado" : "Usar este ficheiro como contexto para a IA"}>
-                            <input type="checkbox" checked={file.selected} disabled={file.isCore} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-5 w-5 rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed" />
+                        <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-600" title="Usar este ficheiro como contexto para a IA">
+                            <input type="checkbox" checked={file.selected} onChange={() => handleToggleFileSelection(index)} className="form-checkbox h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
                             <span className='hidden sm:inline'>Usar na IA</span>
                         </label>
-                        {!file.isCore && (
-                            <button onClick={() => handleDeleteFile(index)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100" title="Remover ficheiro">
-                                <Icon name="trash" />
-                            </button>
-                        )}
+                        <button onClick={() => handleDeleteFile(index)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100" title="Remover ficheiro">
+                            <Icon name="trash" />
+                        </button>
                     </div>
                 </div>
             ))}
         </div>
     </div>
+  );
+
+  const renderDocList = (docs: SavedDocument[], docType: DocumentType) => (
+    docs.map(doc => (
+      <div 
+          key={doc.id} 
+          draggable
+          onDragStart={(e) => handleDragStart(e, docType, doc.id)}
+          onDragEnter={(e) => handleDragEnter(e, docType, doc.id)}
+          onDragEnd={handleDragEnd}
+          onDrop={() => handleDrop(docType)}
+          onDragOver={(e) => e.preventDefault()}
+          className={`group p-2 rounded-md transition-colors cursor-grab ${currentDocId[docType] === doc.id ? 'bg-blue-100' : 'hover:bg-slate-100'} ${dragging && dragItem.current?.id === doc.id ? 'opacity-50' : ''}`}
+      >
+          {editingDoc?.id === doc.id && editingDoc.type === docType ? (
+              <div className="space-y-2">
+                  <input type="text" value={editingDoc.name} onChange={e => setEditingDoc({...editingDoc, name: e.target.value})} className="w-full text-sm font-semibold p-1 border rounded" />
+                  <select value={editingDoc.priority} onChange={e => setEditingDoc({...editingDoc, priority: e.target.value as Priority})} className="w-full text-xs p-1 border rounded bg-white">
+                      {Object.entries(priorityLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                  </select>
+                  <div className="flex gap-2">
+                      <button onClick={handleSaveEditedDoc} className="flex-1 text-xs bg-green-500 text-white rounded px-2 py-1">Guardar</button>
+                      <button onClick={() => setEditingDoc(null)} className="flex-1 text-xs bg-slate-200 rounded px-2 py-1">Cancelar</button>
+                  </div>
+              </div>
+          ) : (
+              <>
+                  <div onClick={() => handleLoadDoc(docType, doc.id)} className="flex items-center gap-2">
+                      <PriorityIndicator priority={doc.priority} />
+                      <span className="text-sm font-medium text-slate-700 flex-1 truncate">{doc.name}</span>
+                  </div>
+                  <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleToggleArchive(docType, doc.id)} title={doc.isArchived ? "Desarquivar" : "Arquivar"} className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name={doc.isArchived ? "box-open" : "archive"} className="text-xs" /></button>
+                      <button onClick={() => setEditingDoc({type: docType, id: doc.id, name: doc.name, priority: doc.priority})} title="Editar Nome/Prioridade" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="edit" className="text-xs" /></button>
+                      <button onClick={() => setHistoryModalContent(doc)} title="Ver Histórico" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="history" className="text-xs" /></button>
+                      <button onClick={() => exportDocumentToPDF(doc, docType === 'etp' ? etpSections : trSections)} title="Exportar para PDF" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="file-pdf" className="text-xs" /></button>
+                      <button onClick={() => handleDeleteDoc(docType, doc.id)} title="Eliminar" className="p-1.5 rounded hover:bg-red-100 text-slate-500 hover:text-red-600"><Icon name="trash" className="text-xs" /></button>
+                  </div>
+              </>
+          )}
+      </div>
+  ))
   );
 
   // Main Render
@@ -870,81 +959,24 @@ Aplique a instrução e retorne APENAS o texto refinado, mantendo o tom técnico
                             <option value="medium">Média</option>
                             <option value="low">Baixa</option>
                         </select>
-                        <select value={sortOrder} onChange={e => setSortOrder(e.target.value as any)} className="w-full text-sm bg-white border border-slate-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="updatedAt">Ordenar por Data</option>
-                            <option value="name">Ordenar por Nome</option>
-                        </select>
+                         <button onClick={() => setShowArchived(!showArchived)} className="w-full text-sm bg-white border border-slate-300 rounded-md px-2 py-1.5 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-center gap-2">
+                            <Icon name={showArchived ? "eye-slash" : "archive"} /> {showArchived ? "Ocultar Arquivados" : "Mostrar Arquivados"}
+                        </button>
                     </div>
                 </div>
                 {/* ETPs */}
-                <SidebarSection title="Estudos Técnicos (ETP)" type="etps" count={filteredDocs(savedETPs).length}>
-                    {filteredDocs(savedETPs).map(doc => (
-                        <div key={doc.id} className={`group p-2 rounded-md transition-colors ${currentDocId.etp === doc.id ? 'bg-blue-100' : 'hover:bg-slate-100'}`}>
-                            {editingDoc?.id === doc.id && editingDoc.type === 'etp' ? (
-                                <div className="space-y-2">
-                                    <input type="text" value={editingDoc.name} onChange={e => setEditingDoc({...editingDoc, name: e.target.value})} className="w-full text-sm font-semibold p-1 border rounded" />
-                                    <select value={editingDoc.priority} onChange={e => setEditingDoc({...editingDoc, priority: e.target.value as Priority})} className="w-full text-xs p-1 border rounded bg-white">
-                                        {Object.entries(priorityLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-                                    </select>
-                                    <div className="flex gap-2">
-                                        <button onClick={handleSaveEditedDoc} className="flex-1 text-xs bg-green-500 text-white rounded px-2 py-1">Guardar</button>
-                                        <button onClick={() => setEditingDoc(null)} className="flex-1 text-xs bg-slate-200 rounded px-2 py-1">Cancelar</button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div onClick={() => handleLoadDoc('etp', doc.id)} className="flex items-center gap-2 cursor-pointer">
-                                        <PriorityIndicator priority={doc.priority} />
-                                        <span className="text-sm font-medium text-slate-700 flex-1 truncate">{doc.name}</span>
-                                    </div>
-                                    <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => setEditingDoc({type: 'etp', id: doc.id, name: doc.name, priority: doc.priority})} title="Editar Nome/Prioridade" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="edit" className="text-xs" /></button>
-                                        <button onClick={() => setHistoryModalContent(doc)} title="Ver Histórico" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="history" className="text-xs" /></button>
-                                        <button onClick={() => exportDocumentToPDF(doc, etpSections)} title="Exportar para PDF" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="file-pdf" className="text-xs" /></button>
-                                        <button onClick={() => handleDeleteDoc('etp', doc.id)} title="Eliminar" className="p-1.5 rounded hover:bg-red-100 text-slate-500 hover:text-red-600"><Icon name="trash" className="text-xs" /></button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ))}
+                <SidebarSection title="Estudos Técnicos (ETP)" type="etps" count={filteredDocs(savedETPs, showArchived).length}>
+                  {renderDocList(filteredDocs(savedETPs, showArchived), 'etp')}
                 </SidebarSection>
                 {/* TRs */}
-                 <SidebarSection title="Termos de Referência (TR)" type="trs" count={filteredDocs(savedTRs).length}>
-                    {filteredDocs(savedTRs).map(doc => (
-                         <div key={doc.id} className={`group p-2 rounded-md transition-colors ${currentDocId.tr === doc.id ? 'bg-blue-100' : 'hover:bg-slate-100'}`}>
-                            {editingDoc?.id === doc.id && editingDoc.type === 'tr' ? (
-                                <div className="space-y-2">
-                                    <input type="text" value={editingDoc.name} onChange={e => setEditingDoc({...editingDoc, name: e.target.value})} className="w-full text-sm font-semibold p-1 border rounded" />
-                                    <select value={editingDoc.priority} onChange={e => setEditingDoc({...editingDoc, priority: e.target.value as Priority})} className="w-full text-xs p-1 border rounded bg-white">
-                                        {Object.entries(priorityLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-                                    </select>
-                                    <div className="flex gap-2">
-                                        <button onClick={handleSaveEditedDoc} className="flex-1 text-xs bg-green-500 text-white rounded px-2 py-1">Guardar</button>
-                                        <button onClick={() => setEditingDoc(null)} className="flex-1 text-xs bg-slate-200 rounded px-2 py-1">Cancelar</button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <div onClick={() => handleLoadDoc('tr', doc.id)} className="flex items-center gap-2 cursor-pointer">
-                                        <PriorityIndicator priority={doc.priority} />
-                                        <span className="text-sm font-medium text-slate-700 flex-1 truncate">{doc.name}</span>
-                                    </div>
-                                    <div className="flex items-center justify-end gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => setEditingDoc({type: 'tr', id: doc.id, name: doc.name, priority: doc.priority})} title="Editar Nome/Prioridade" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="edit" className="text-xs" /></button>
-                                        <button onClick={() => setHistoryModalContent(doc)} title="Ver Histórico" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="history" className="text-xs" /></button>
-                                        <button onClick={() => exportDocumentToPDF(doc, trSections)} title="Exportar para PDF" className="p-1.5 rounded hover:bg-slate-200 text-slate-500 hover:text-slate-800"><Icon name="file-pdf" className="text-xs" /></button>
-                                        <button onClick={() => handleDeleteDoc('tr', doc.id)} title="Eliminar" className="p-1.5 rounded hover:bg-red-100 text-slate-500 hover:text-red-600"><Icon name="trash" className="text-xs" /></button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ))}
+                 <SidebarSection title="Termos de Referência (TR)" type="trs" count={filteredDocs(savedTRs, showArchived).length}>
+                  {renderDocList(filteredDocs(savedTRs, showArchived), 'tr')}
                 </SidebarSection>
                 {/* RAG files */}
                 <SidebarSection title="Ficheiros de Apoio (RAG)" type="rag" count={uploadedFiles.length}>
                     {uploadedFiles.map((file, index) => (
                         <div key={file.name} className={`flex items-center gap-2 p-2 rounded-md ${activeView === 'rag' ? 'bg-blue-100' : ''}`} onClick={() => setActiveView('rag')}>
-                            <Icon name={file.isCore ? "bookmark" : "file-alt"} className="text-slate-500" />
+                            <Icon name="file-alt" className="text-slate-500" />
                             <span className="text-sm font-medium text-slate-700 flex-1 truncate">{file.name}</span>
                         </div>
                     ))}

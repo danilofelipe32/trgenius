@@ -11,7 +11,7 @@ export interface Section {
 }
 
 export interface DocumentSection {
-  [key: string]: string;
+  [key:string]: string;
 }
 
 export interface Attachment {
@@ -38,6 +38,8 @@ export interface SavedDocument {
   attachments?: Attachment[];
   history?: DocumentVersion[];
   priority?: Priority;
+  isArchived?: boolean;
+  order?: number;
 }
 
 export type DocumentType = 'etp' | 'tr';
@@ -51,7 +53,6 @@ export interface UploadedFile {
   name: string;
   chunks: string[];
   selected: boolean;
-  isCore?: boolean;
 }
 
 export interface PreviewContext {
