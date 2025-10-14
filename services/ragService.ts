@@ -6,8 +6,9 @@ declare const mammoth: any;
 export const chunkText = (text: string): string[] => {
   const normalizedText = text.replace(/\s\s+/g, ' ').trim();
   
+  // Tenta dividir por artigos de lei primeiro
   const articles = normalizedText.split(/(Art\.\s\d+º?\.?)/).slice(1);
-  if (articles.length > 2) {
+  if (articles.length > 2) { // Heurística para verificar se a divisão por artigo funcionou
     const chunks = [];
     for (let i = 0; i < articles.length; i += 2) {
       chunks.push((articles[i] + articles[i + 1]).trim());
@@ -15,6 +16,7 @@ export const chunkText = (text: string): string[] => {
     return chunks.filter(c => c.length > 10);
   }
 
+  // Fallback para divisão por parágrafos
   return text.split(/\n\s*\n/).filter(paragraph => paragraph.trim().length > 10);
 };
 
@@ -89,5 +91,24 @@ export const processSingleUploadedFile = async (
   } catch (error: any) {
     console.error(`Erro ao processar o ficheiro ${file.name}:`, error);
     throw new Error(error.message || `Não foi possível ler o ficheiro.`);
+  }
+};
+
+export const processCoreFile = async (fileContent: any[], fileName: string): Promise<UploadedFile> => {
+  try {
+    const text = fileContent.map(page => page.content).join('\n\n');
+    if (!text || text.trim().length === 0) {
+        throw new Error('Ficheiro principal está vazio ou é ilegível.');
+    }
+    const chunks = chunkText(text);
+    return {
+      name: fileName,
+      chunks,
+      selected: true,
+      isCore: true // Sinalizador para identificar como ficheiro principal
+    };
+  } catch (error: any) {
+    console.error(`Erro ao processar o ficheiro principal ${fileName}:`, error);
+    throw new Error(error.message || `Não foi possível ler o ficheiro principal.`);
   }
 };

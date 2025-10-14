@@ -11,8 +11,8 @@ const InstallPWA: React.FC<InstallPWAProps> = ({ onInstall, onDismiss }) => {
     <div className="fixed bottom-0 left-0 right-0 bg-white p-4 shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-50 animate-slide-up" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
       <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-pink-100 rounded-lg flex-shrink-0 flex items-center justify-center">
-            <Icon name="brain" className="text-pink-600 text-2xl" />
+          <div className="w-12 h-12 bg-blue-100 rounded-lg flex-shrink-0 flex items-center justify-center">
+            <Icon name="lightbulb" className="text-blue-600 text-2xl" />
           </div>
           <div>
             <h4 className="font-bold text-slate-800">Instale o TR Genius</h4>
