@@ -312,6 +312,7 @@ const App: React.FC = () => {
 
         } catch (error) {
             console.error("Erro ao carregar a base de conhecimento:", error);
+            setMessage({ title: 'Erro de Carregamento', text: `Não foi possível carregar a base de conhecimento principal (lei14133.json). Algumas funcionalidades podem ser afetadas. Detalhes: ${error}` });
             setUploadedFiles(userFiles);
         }
     };
@@ -1018,7 +1019,7 @@ Solicitação do usuário: "${refinePrompt}"
               >
                   <Icon name="wand-magic-sparkles" />
                   {summaryState.loading ? 'A resumir...' : 'Gerar Resumo com IA'}
-              </button>
+               </button>
             </div>
              {(summaryState.loading || summaryState.content) && (
                 <div className="mt-6 p-4 bg-purple-50 border-l-4 border-purple-400 rounded-r-lg">
@@ -1500,7 +1501,6 @@ Solicitação do usuário: "${refinePrompt}"
                         </div>
                     </div>
                 )}
-
 
                 {/* Accordion Section: RAG */}
                 <div className="py-1">
