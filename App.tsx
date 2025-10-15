@@ -407,7 +407,6 @@ const App: React.FC = () => {
     const fieldsToValidate = requiredFields[docType] || [];
 
     fieldsToValidate.forEach(field => {
-        // FIX: Safely call .trim() by ensuring the value from sections is treated as a string.
         if (!sections[field.id] || String(sections[field.id] || '').trim() === '') {
             errors.push(`O campo "${field.name}" é obrigatório.`);
             errorFields.add(field.id);
@@ -546,7 +545,6 @@ const App: React.FC = () => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    // FIX: Explicitly type `fileList` as `File[]` to resolve type inference issues with `Array.from(FileList)`.
     const fileList: File[] = Array.from(files);
 
     const filesToProcess = fileList.map(file => ({
@@ -664,9 +662,7 @@ const App: React.FC = () => {
         }
 
         const trOtherSectionsContext = Object.entries(currentSections)
-            // FIX: Safely call .trim() by ensuring value is a string.
             .filter(([key, value]) => key !== sectionId && value && String(value || '').trim())
-            // FIX: Safely call .trim() by ensuring value is a string.
             .map(([key, value]) => `Contexto da Seção do TR (${trSections.find(s => s.id === key)?.title}):\n${String(value || '').trim()}`)
             .join('\n\n');
         
@@ -675,7 +671,6 @@ const App: React.FC = () => {
     } else if (docType === 'etp') {
         primaryContext = Object.entries(currentSections)
             .filter(([key, value]) => key !== sectionId && value)
-            // FIX: Safely call .trim() by ensuring value is a string.
             .map(([key, value]) => `Contexto Adicional (${etpSections.find(s => s.id === key)?.title}): ${String(value || '').trim()}`)
             .join('\n');
     }
@@ -855,7 +850,6 @@ const App: React.FC = () => {
         <div className="space-y-8">
           {allSections.map(section => {
             const content = doc.sections[section.id];
-            // FIX: Safely call .trim() by ensuring content is a string.
             if (content && String(content || '').trim()) {
               return (
                 <div key={section.id}>
@@ -1487,10 +1481,10 @@ const App: React.FC = () => {
                         hasGen={section.hasGen}
                         onAnalyze={() => handleRiskAnalysis('etp', section.id, section.title)}
                         hasRiskAnalysis={section.hasRiskAnalysis}
-                        isLoading={loadingSection === section.id}
                         onEdit={() => handleOpenEditModal('etp', section.id, section.title)}
                         hasError={validationErrors.has(section.id)}
                         tooltip={section.tooltip}
+                        isLoading={loadingSection === section.id}
                     />
                   );
                 })}
