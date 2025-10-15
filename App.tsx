@@ -14,6 +14,7 @@ import { Modal } from './components/Modal';
 import { Section } from './components/Section';
 import { PriorityIndicator } from './components/PriorityIndicator';
 import { LoadedEtpViewer } from './components/LoadedEtpViewer';
+import { lei14133Data } from './data/lei14133Data';
 
 
 declare const mammoth: any;
@@ -136,7 +137,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    const loadInitialData = async () => {
+    const loadInitialData = () => {
         const etps = storage.getSavedETPs();
         setSavedETPs(etps);
         setSavedTRs(storage.getSavedTRs());
@@ -154,32 +155,19 @@ const App: React.FC = () => {
         
         const userFiles = storage.getStoredFiles();
 
-        try {
-            const response = await fetch('/lei14133.json');
-            if (!response.ok) {
-                throw new Error(`Falha ao carregar o arquivo: ${response.statusText}`);
-            }
-            const lawData = await response.json();
+        // Load core knowledge base directly from import
+        const fullText = lei14133Data.map(item => item.content).join('\n\n');
+        const chunks = chunkText(fullText);
 
-            const lawContent = lawData as { page: number; content: string }[];
-            const fullText = lawContent.map(item => item.content).join('\n\n');
-            const chunks = chunkText(fullText);
-
-            const lawFile: UploadedFile = {
-                name: 'lei14133.json',
-                chunks,
-                selected: true,
-                isCore: true
-            };
-            
-            const existingUserFiles = userFiles.filter(f => !f.isCore);
-            setUploadedFiles([lawFile, ...existingUserFiles]);
-
-        } catch (error) {
-            console.error("Erro ao carregar a base de conhecimento:", error);
-            setMessage({ title: 'Erro de Carregamento', text: `Não foi possível carregar a base de conhecimento principal (lei14133.json). Algumas funcionalidades podem ser afetadas. Detalhes: ${(error as Error).message}` });
-            setUploadedFiles(userFiles);
-        }
+        const lawFile: UploadedFile = {
+            name: 'Lei 14.133/21',
+            chunks,
+            selected: true,
+            isCore: true
+        };
+        
+        const existingUserFiles = userFiles.filter(f => !f.isCore);
+        setUploadedFiles([lawFile, ...existingUserFiles]);
     };
 
     loadInitialData();

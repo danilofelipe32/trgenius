@@ -25,8 +25,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="flex items-center justify-center min-h-screen bg-slate-100 font-sans">
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-2xl shadow-lg m-4">
         <div className="text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-full mb-4">
-                <Icon name="brain" className="text-pink-600 text-3xl" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                <Icon name="brain" className="text-blue-600 text-3xl" />
             </div>
             <h1 className="text-3xl font-bold text-slate-900">TR Genius</h1>
             <p className="mt-2 text-slate-600">Por favor, faça login para continuar.</p>

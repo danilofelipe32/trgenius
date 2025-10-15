@@ -70,4 +70,27 @@ export const Section: React.FC<SectionProps> = ({ id, title, placeholder, value,
             <button
               onClick={onGenerate}
               disabled={isLoading}
-              className="flex-1 flex items
+              className="flex-1 flex items-center justify-center text-center px-4 py-2 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-w-[calc(50%-0.25rem)] sm:min-w-0"
+              title="Gerar Conteúdo com IA"
+            >
+              {isLoading ? (
+                <Icon name="spinner" className="fa-spin mr-2" />
+              ) : (
+                <Icon name="wand-magic-sparkles" className="mr-2" />
+              )}
+              <span>{isLoading ? 'A gerar...' : 'Gerar com IA'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+      <textarea
+        id={id}
+        value={value || ''}
+        onChange={(e) => onChange(id, e.target.value)}
+        placeholder={placeholder}
+        className={`w-full h-48 p-3 bg-slate-50 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${hasError ? 'border-red-500 ring-red-500' : 'border-slate-200 focus:ring-blue-500'}`}
+        aria-invalid={hasError}
+      />
+    </div>
+  );
+};
