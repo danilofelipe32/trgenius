@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Section as SectionType, SavedDocument, UploadedFile, DocumentType, PreviewContext, Attachment, DocumentVersion, Priority } from './types';
 import * as storage from './services/storageService';
-import { callGemini } from './services/geminiService';
+import { generateEtpSection, generateTrSection, analyzeRisk, refineText, generateSummary } from './services/geminiService';
 import { processSingleUploadedFile, chunkText } from './services/ragService';
 import { exportDocumentToPDF } from './services/exportService';
 import { Icon } from './components/Icon';
@@ -346,7 +346,6 @@ const App: React.FC = () => {
     setLoadingSection(sectionId);
 
     let context = '';
-    let prompt = '';
     const ragContext = getRagContext();
 
     if(docType === 'etp') {
@@ -364,7 +363,6 @@ const App: React.FC = () => {
           context += `\nContexto Adicional (${sec.title}): ${content.trim()}\n`;
         }
       });
-      prompt = `Você é um especialista em planeamento de contratações públicas no Brasil. Sua tarefa é gerar o conteúdo para a seção "${title}" de um Estudo Técnico Preliminar (ETP).\n\nUse o seguinte contexto do formulário como base:\n${context}\n${ragContext}\n\nGere um texto detalhado e tecnicamente correto para a seção "${title}", utilizando a Lei 14.133/21 como referência principal e incorporando as informações do formulário e dos documentos de apoio.`;
     } else { // TR
       if (!loadedEtpForTr) {
         setMessage({ title: 'Aviso', text: 'Por favor, carregue um ETP para usar como contexto antes de gerar o TR.' });
@@ -383,11 +381,16 @@ const App: React.FC = () => {
           context += `\nContexto Adicional do TR já preenchido (${sec.title}): ${content.trim()}\n`;
         }
       });
-      prompt = `Você é um especialista em licitações públicas no Brasil. Sua tarefa é gerar o conteúdo para a seção "${title}" de um Termo de Referência (TR).\n\nPara isso, utilize as seguintes fontes de informação, em ordem de prioridade:\n1. O Estudo Técnico Preliminar (ETP) base.\n2. Os documentos de apoio (RAG) fornecidos.\n3. O conteúdo já preenchido em outras seções do TR.\n\n${context}\n${ragContext}\n\nGere um texto detalhado e bem fundamentado para a seção "${title}" do TR, extraindo e inferindo as informações necessárias das fontes fornecidas.`;
     }
 
     try {
-      const generatedText = await callGemini(prompt);
+      let generatedText: string;
+      if (docType === 'etp') {
+          generatedText = await generateEtpSection(title, context, ragContext);
+      } else { // TR
+          generatedText = await generateTrSection(title, context, ragContext);
+      }
+      
       if (generatedText && !generatedText.startsWith("Erro:")) {
         handleSectionChange(docType, sectionId, generatedText);
       } else {
@@ -689,26 +692,8 @@ const App: React.FC = () => {
             .join('\n');
     }
 
-    const prompt = `Você é um especialista em gestão de riscos em contratações públicas no Brasil. Sua tarefa é analisar a seção "${title}" de um ${docType.toUpperCase()} e identificar potenciais riscos.
-
-Use o contexto do documento e os documentos de apoio fornecidos.
-
-**Seção a ser analisada:**
-${sectionContent}
-
-**Contexto Adicional (Outras seções, ETP, etc.):**
-${primaryContext}
-${ragContext}
-
-**Sua Tarefa:**
-1.  **Identifique Riscos:** Liste de 3 a 5 riscos potenciais relacionados ao conteúdo da seção analisada.
-2.  **Classifique os Riscos:** Para cada risco, classifique a Probabilidade (Baixa, Média, Alta) e o Impacto (Baixo, Médio, Alto).
-3.  **Sugira Medidas de Mitigação:** Para cada risco, proponha uma ou duas ações concretas para mitigar ou eliminar o risco.
-
-Formate a sua resposta de forma clara e organizada, usando títulos para cada risco.`;
-
     try {
-        const analysisResult = await callGemini(prompt);
+        const analysisResult = await analyzeRisk(title, String(sectionContent || ''), primaryContext, ragContext, docType);
         setAnalysisContent({ title: `Análise de Riscos: ${title}`, content: analysisResult });
     } catch (error: any) {
         setAnalysisContent({ title: `Análise de Riscos: ${title}`, content: `Erro ao realizar análise: ${error.message}` });
@@ -739,18 +724,8 @@ Formate a sua resposta de forma clara e organizada, usando títulos para cada ri
     if (!editingContent || !refinePrompt) return;
     setIsRefining(true);
     
-    const prompt = `Você é um assistente de redação especializado em documentos públicos. Refine o texto a seguir com base na solicitação do usuário. Retorne apenas o texto refinado, sem introduções ou observações.
-
---- INÍCIO DO TEXTO ORIGINAL ---
-${editingContent.text}
---- FIM DO TEXTO ORIGINAL ---
-
-Solicitação do usuário: "${refinePrompt}"
-
---- TEXTO REFINADO ---`;
-
     try {
-      const refinedText = await callGemini(prompt);
+      const refinedText = await refineText(editingContent.text, refinePrompt);
       if (refinedText && !refinedText.startsWith("Erro:")) {
         setEditingContent({ ...editingContent, text: refinedText });
       } else {
@@ -831,25 +806,8 @@ Solicitação do usuário: "${refinePrompt}"
       
       const ragContext = getRagContext();
 
-      const prompt = `Você é um assistente especializado em analisar documentos de licitações públicas. Sua tarefa é criar um resumo executivo do "Documento Principal" a seguir. Utilize os "Documentos de Apoio (RAG)" como contexto para entender melhor o tema.
-
-      O resumo deve ser conciso, focar APENAS nas informações do "Documento Principal" e destacar os seguintes pontos:
-      1.  O objetivo principal da contratação.
-      2.  Os elementos ou requisitos mais importantes.
-      3.  A conclusão ou solução recomendada.
-
-      Seja direto e claro. O resumo não deve exceder 200 palavras.
-
-      --- INÍCIO DO DOCUMENTO PRINCIPAL ---
-      ${documentText}
-      --- FIM DO DOCUMENTO PRINCIPAL ---
-      
-      ${ragContext}
-
-      --- RESUMO EXECUTIVO ---`;
-
       try {
-        const summary = await callGemini(prompt);
+        const summary = await generateSummary(documentText, ragContext);
         if (summary && !summary.startsWith("Erro:")) {
           setSummaryState({ loading: false, content: summary });
         } else {
